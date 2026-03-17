@@ -13,12 +13,14 @@ const registerSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
-export function validateRegisterInput(input: unknown) {
+export async function validateRegisterInput(input: unknown) {
   return registerSchema.safeParse(input)
 }
 
-export async function registerAction(formData: FormData) {
-  const result = validateRegisterInput({
+type ActionState = { error: string } | undefined
+
+export async function registerAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const result = await validateRegisterInput({
     name: formData.get('name'),
     email: formData.get('email'),
     password: formData.get('password'),
@@ -34,7 +36,7 @@ export async function registerAction(formData: FormData) {
   await signIn('credentials', { email: result.data.email, password: result.data.password, redirectTo: '/' })
 }
 
-export async function loginAction(formData: FormData) {
+export async function loginAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   try {
     await signIn('credentials', {
       email: formData.get('email') as string,

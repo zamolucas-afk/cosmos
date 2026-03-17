@@ -11,13 +11,13 @@ vi.mock('@/lib/auth/auth', () => ({ signIn: vi.fn(), signOut: vi.fn() }))
 const { validateRegisterInput } = await import('../auth')
 
 describe('validateRegisterInput', () => {
-  it('fails for short password', () => {
-    expect(validateRegisterInput({ name: 'T', email: 'a@b.com', password: 'short' }).success).toBe(false)
+  it('fails for short password', async () => {
+    expect((await validateRegisterInput({ name: 'T', email: 'a@b.com', password: 'short' })).success).toBe(false)
   })
-  it('fails for invalid email', () => {
-    expect(validateRegisterInput({ name: 'T', email: 'notvalid', password: 'longpass123' }).success).toBe(false)
+  it('fails for invalid email', async () => {
+    expect((await validateRegisterInput({ name: 'T', email: 'notvalid', password: 'longpass123' })).success).toBe(false)
   })
-  it('passes for valid input', () => {
-    expect(validateRegisterInput({ name: 'Test', email: 'a@b.com', password: 'validpass123' }).success).toBe(true)
+  it('passes for valid input', async () => {
+    expect((await validateRegisterInput({ name: 'Test', email: 'a@b.com', password: 'validpass123' })).success).toBe(true)
   })
 })

@@ -17,7 +17,7 @@ export default function LoginPage() {
           <p className="text-text-secondary text-sm mt-1">Sign in to Cosmos</p>
         </div>
 
-        <form action={action as unknown as (formData: FormData) => Promise<void>}
+        <form action={action}
           className="bg-surface rounded-lg p-6 flex flex-col gap-4 border border-accent-dim/30">
           {state?.error && (
             <p className="text-error text-sm bg-error/10 rounded px-3 py-2">{state.error}</p>
