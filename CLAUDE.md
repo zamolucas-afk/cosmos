@@ -121,23 +121,34 @@ src/
     notes/[id]/page.tsx         # Note detail (server — fetches + ownership check)
     api/
       auth/[...nextauth]/route.ts       # Auth.js route handler
+      ask/route.ts                      # Global Ask Your Notes — SSE streaming
+      ask/[noteId]/route.ts             # Per-note Ask — SSE streaming
+      collections/[tag]/summary/route.ts # Collection AI summary generation
       payfast/notify/route.ts           # PayFast ITN webhook
       payfast/__tests__/notify.test.ts
+    collections/[tag]/page.tsx  # Collection detail (server — tag-filtered notes)
     page.tsx                    # Home — notes feed (server component)
     layout.tsx                  # Root layout (fonts, html/body)
     globals.css                 # Tailwind v4 @theme tokens
   components/
-    Navbar.tsx              # Async server component — plan badge, sign out
-    NoteCard.tsx            # Note list item (link card)
-    NotesFeed.tsx           # Client shell — search + list + record FAB
-    NoteDetail.tsx          # Note detail view — copy, delete confirmation
+    Navbar.tsx              # Async server component — trial/free/pro badge, sign out
+    NoteCard.tsx            # Rich note card — emoji, time, duration, unread dot, menu
+    NotesFeed.tsx           # Client shell — tabs + search + list + New Note CTA
+    NoteTabs.tsx            # Category tabs (All/Meetings/Favorites/Collections)
+    NoteDetail.tsx          # Note detail — header, tabs, copy summary, favorite, delete
+    NoteDetailTabs.tsx      # Summary | Transcript | Ask tabs
+    InsightsView.tsx        # AI insights — summary, action items, key decisions, tags
+    AskChat.tsx             # Chat UI for Ask Your Notes (global + per-note)
+    TagPill.tsx             # Small tag pill button
+    NoteMenu.tsx            # Three-dot dropdown (favorite, delete)
+    CollectionCard.tsx      # Smart collection card (tag, count, summary)
     SearchBar.tsx           # Client-side note filter
     StarField.tsx           # Animated star background (CSS divs)
     Waveform.tsx            # Audio amplitude bars (client, requestAnimationFrame)
     RecordingOrb.tsx        # Tap-to-record orb — idle/recording/thinking states
     RecordingScreen.tsx     # Full recording UI (client) — includes FallbackTextInput
-    PricingCard.tsx         # Free/Pro pricing card (client)
-    AccountView.tsx         # Account/billing view (client)
+    PricingCard.tsx         # Trial/Free/Pro pricing cards (client)
+    AccountView.tsx         # Account/billing view — trial countdown (client)
     __tests__/NoteCard.test.tsx
   hooks/
     useRecorder.ts          # MediaRecorder + SpeechRecognition + AudioContext hook
@@ -146,29 +157,33 @@ src/
       auth.ts               # Auth.js full config — Node.js only
       auth.config.ts        # Edge-safe config subset (middleware)
     actions/
-      auth.ts               # registerAction(_prevState, formData), loginAction, signOutAction, validateRegisterInput
-      notes.ts              # saveNote (limit-enforced), deleteNote, getMonthlyRecordingCount
-      subscription.ts       # initiateSubscription, cancelSubscription
+      auth.ts               # registerAction (sets trial plan), loginAction, signOutAction
+      notes.ts              # saveNote (insights + limits), deleteNote, toggleFavorite, markViewed, getMonthlyNoteCount
+      subscription.ts       # initiateSubscription (R149), cancelSubscription
       __tests__/auth.test.ts
       __tests__/notes.test.ts
     db/
       index.ts              # db (HTTP) + poolDb (Pool) exports
       schema/
-        users.ts
-        notes.ts
+        users.ts            # + trialStartedAt, trialEndsAt, dailyAskCount, lastAskDate
+        notes.ts            # + emoji, summary, actionItems, keyDecisions, tags, isFavorite, viewed, updatedAt
         subscriptions.ts
         payments.ts
+        collection-summaries.ts  # Cached AI collection summaries
         auth-tables.ts
         index.ts            # re-exports all
       __tests__/schema.test.ts
-    claude.ts               # polishNote — Claude claude-sonnet-4-6
+    validation/
+      insights.ts           # Zod schemas: InsightsSchema, ActionItemSchema
+    trial.ts                # checkAndExpireTrial helper
+    claude.ts               # polishNote — returns title, emoji, polished, summary, actionItems, keyDecisions, tags
     payfast.ts              # generateSignature, verifyItnSignature, buildApiHeaders, getPayFastUrl
     utils.ts                # cn(), formatDuration()
     __tests__/payfast.test.ts
     __tests__/claude.test.ts
   middleware.ts             # Route protection (edge-safe, imports only auth.config.ts)
   test/setup.ts             # Vitest + jsdom setup
-  types/next-auth.d.ts      # Session type augmentation (id, plan)
+  types/next-auth.d.ts      # Session type augmentation (id, plan: trial/free/pro, trialEndsAt)
 
 drizzle.config.ts
 CLAUDE.md
@@ -176,25 +191,28 @@ CLAUDE.md
 
 ---
 
-## Database Schema (4 tables + 2 Auth.js)
+## Database Schema (5 tables + 2 Auth.js)
 
 | Table | Purpose |
 |---|---|
-| `users` | id, name, email, password_hash (nullable), plan ('free'/'pro'), created_at |
-| `notes` | id, user_id, title, raw_transcript, polished_transcript, duration (seconds int), created_at |
+| `users` | id, name, email, password_hash, plan ('free'/'trial'/'pro'), trial_started_at, trial_ends_at, daily_ask_count, last_ask_date, created_at |
+| `notes` | id, user_id, title, emoji, raw_transcript, polished_transcript, summary, action_items (jsonb), key_decisions (jsonb), tags (text[]), duration, is_favorite, viewed, created_at, updated_at |
+| `collection_summaries` | tag, user_id (PK: user_id, tag), summary, generated_at — cached AI summaries for smart collections |
 | `subscriptions` | id, user_id, payfast_token, status, cancel_at_period_end, current_period_start/end, timestamps |
 | `payments` | id, user_id, subscription_id, amount_cents, payfast_payment_id (unique), status, created_at |
 | `accounts` | Auth.js OAuth provider links |
 | `verification_tokens` | Auth.js email verification |
 
-Composite index on `notes(user_id, created_at)` for monthly count queries.
+Indexes: `notes(user_id, created_at)`, `notes_fts_idx` (GIN on title+transcript), `notes_tags_idx` (GIN on tags).
 
 ---
 
-## Freemium Model
+## Business Model (V2)
 
-- **Free:** 10 recordings/month (enforced in `saveNote` by reading DB, not JWT)
-- **Pro:** Unlimited recordings, R99/month via PayFast recurring subscription
+- **Trial (7 days):** 20 notes, full features, card required upfront. Auto-charges R149 on day 8.
+- **Free (post-trial fallback):** 3 notes/month, 5 asks/day, read-only insights on existing notes
+- **Pro:** Unlimited notes, unlimited Ask, full features, R149/month via PayFast
+- Plan values: `'trial'` | `'free'` | `'pro'` — enforced in `saveNote` by reading DB, not JWT
 - PayFast sends ITN (Instant Transaction Notification) to `/api/payfast/notify`
 - On `COMPLETE`: upsert subscription, set `users.plan = 'pro'` (atomic via `poolDb` transaction) — idempotent via `payfastPaymentId UNIQUE`
 - On `CANCELLED`: set subscription cancelled, downgrade plan only if `currentPeriodEnd <= now()`
@@ -220,23 +238,25 @@ npm run db:migrate   # Run migrations
 
 ## Environment Setup (before first run)
 
-1. **Neon Postgres** ✅ — project `cosmos` created at https://console.neon.tech, AWS US East 1 (N. Virginia), Postgres 17. Copy the connection string from the Neon dashboard into `DATABASE_URL`.
+1. **Neon Postgres** ✅ — project `cosmos` provisioned at https://console.neon.tech, AWS US East 1, Postgres 17. Project ID: `wandering-poetry-42994371`. All 6 tables created via Neon MCP (drizzle-kit push fails due to WebSocket timeout on Windows — use Neon MCP `run_sql` or the SQL Editor in the dashboard instead).
 2. **Anthropic API key** — from https://console.anthropic.com
 3. **PayFast sandbox** — register at https://sandbox.payfast.co.za
-4. **Auth secret** — `openssl rand -base64 32`
+4. **Auth secret** ✅ — generated and set in `.env.local`
 
 ```bash
 cp .env.example .env.local
 # Fill in all values — DATABASE_URL from Neon dashboard, AUTH_SECRET, ANTHROPIC_API_KEY, PAYFAST_* etc.
-npm run db:push   # creates all tables in Neon
 npm run dev
 ```
 
 ### Neon connection string format
 ```
-postgresql://user:password@ep-xxx-yyy.us-east-1.aws.neon.tech/neondb?sslmode=require
+postgresql://neondb_owner:PASSWORD@ep-xxx-yyy-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 ```
-Get it from: Neon dashboard → your project → **Connection Details** → copy the full connection string.
+Get it from: Neon dashboard → your project → **Connect** button → copy the pooler connection string.
+
+### Known issue: `drizzle-kit push` on Windows
+`drizzle-kit push` uses `@neondatabase/serverless` WebSocket driver which times out on Windows/WSL. Workaround: run schema DDL directly via Neon MCP (`run_sql`) or the Neon SQL Editor in the dashboard.
 
 ## Environment Variables
 
@@ -254,8 +274,9 @@ Get it from: Neon dashboard → your project → **Connection Details** → copy
 
 ---
 
-## Implementation Status — COMPLETE ✅
+## Implementation Status — V1 COMPLETE ✅ / V2 IN PROGRESS
 
+### V1 — Complete
 All 25 tasks implemented, 25 tests passing, production build verified.
 
 **What's built:**
@@ -267,15 +288,51 @@ All 25 tasks implemented, 25 tests passing, production build verified.
 - PayFast freemium subscription (R99/month Pro, ITN webhook, cancel flow)
 - Pricing page, Account page with subscription management
 
-**Next steps before launch:**
-1. Provision Neon database and run `db:push`
-2. Set up environment variables (see above)
-3. Test PayFast sandbox end-to-end (ngrok for ITN delivery)
+**What's done:**
+- Neon database provisioned, all 6 tables + index created
+- `.env.local` configured with real DATABASE_URL, AUTH_SECRET, and ANTHROPIC_API_KEY
+- App running locally, registration and login verified working
+
+### Bug Fixes (2026-03-17 QA Session)
+
+1. **`loginAction` swallowed redirect error** — `src/lib/actions/auth.ts:46`: The `catch` block caught Next.js's `NEXT_REDIRECT` error on successful login, causing "Invalid email or password" even with correct credentials. Fix: re-throw errors with `digest` starting with `NEXT_REDIRECT`.
+
+2. **Intermittent Neon cold-start failures** — `src/app/record/page.tsx`: The Neon HTTP driver occasionally fails on first query after idle. Fix: added retry logic (`getUserPlan` with 2 retries) to the record page's pre-flight plan check.
+
+3. **RecordingOrb animation conflict** — `src/components/RecordingOrb.tsx`: Removed `transition-transform hover:scale-105 active:scale-95` Tailwind classes that conflicted with the CSS `orb-idle` animation transform, making the button unresponsive to clicks.
+
+### V2 — Upgrade (In Progress)
+
+**Vision**: Transform Cosmos from a voice recorder into an intelligent personal knowledge base. *"Summary takes notes. Cosmos thinks for you."*
+
+**Differentiators vs Summary AI Note Taker:**
+- **Ask Your Notes** — cross-note AI chat that searches entire history (Summary only does per-note chat)
+- **AI Auto-Tags + Smart Collections** — automatic organization via Claude-generated tags, no manual folders
+
+**Full feature set (priority order):**
+1. AI Insights per note (summary, action items, key decisions, emoji, tags)
+2. Ask Your Notes — cross-note AI chat with citations
+3. AI Auto-Tags + Smart Collections
+4. Richer NoteCards (emoji, time, duration, unread dot, ••• menu)
+5. Note detail tabbed view (Summary | Transcript | Ask)
+6. Category tabs (All, Meetings, Favorites, Collections)
+7. Favorites system
+8. Share/Copy
+9. Full-width "New Note" CTA
+10. Language rename: "recording" → "note" everywhere
+
+**V2 Spec**: `docs/superpowers/specs/2026-03-17-cosmos-v2-upgrade-design.md`
+
+### Next steps
+1. Set up PayFast sandbox credentials
+2. Test PayFast sandbox end-to-end (ngrok for ITN delivery)
+3. Implement V2 features
 4. Deploy to Netlify
 
 ---
 
 ## Spec & Plan
 
-- **Spec:** `c:/dev/my-legacy-memories/docs/superpowers/specs/2026-03-17-cosmos-ai-note-taker-design.md`
-- **Plan:** `c:/dev/my-legacy-memories/docs/superpowers/plans/2026-03-17-cosmos-ai-note-taker.md`
+- **V1 Spec:** `c:/dev/my-legacy-memories/docs/superpowers/specs/2026-03-17-cosmos-ai-note-taker-design.md`
+- **V1 Plan:** `c:/dev/my-legacy-memories/docs/superpowers/plans/2026-03-17-cosmos-ai-note-taker.md`
+- **V2 Spec:** `docs/superpowers/specs/2026-03-17-cosmos-v2-upgrade-design.md`

@@ -24,7 +24,7 @@ export const authConfig: NextAuthConfig = {
     session({ session, token }) {
       session.user.id = token.id as string
       session.user.plan = (token.plan as 'free' | 'trial' | 'pro') ?? 'free'
-      session.user.trialEndsAt = (token.trialEndsAt as string) ?? null
+      ;(session.user as { trialEndsAt: string | null }).trialEndsAt = (token.trialEndsAt as string) ?? null
       return session
     },
   },
