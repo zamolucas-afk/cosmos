@@ -28,11 +28,11 @@ export async function initiateSubscription(): Promise<never> {
     name_first: user.name.split(' ')[0],
     email_address: user.email,
     m_payment_id: mPaymentId,
-    amount: '99.00',
+    amount: '149.00',
     item_name: 'Cosmos Pro — Monthly',
     subscription_type: '1',
     billing_date: today,
-    recurring_amount: '99.00',
+    recurring_amount: '149.00',
     frequency: '3',
     cycles: '0',
   }

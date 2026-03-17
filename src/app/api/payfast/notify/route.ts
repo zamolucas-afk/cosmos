@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Verify amount
-  if (parseFloat(params.amount) !== 99.00) {
+  if (parseFloat(params.amount) !== 149.00) {
     return new NextResponse('Amount mismatch', { status: 400 })
   }
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       await tx.insert(payments).values({
         userId,
         subscriptionId: existingSub?.id,
-        amountCents: 9900,
+        amountCents: 14900,
         payfastPaymentId,
         status: 'complete',
       }).onConflictDoNothing()
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     const payfastPaymentId = params.pf_payment_id ?? `${userId}_failed_${Date.now()}`
     await db.insert(payments).values({
       userId,
-      amountCents: 9900,
+      amountCents: 14900,
       payfastPaymentId,
       status: 'failed',
     }).onConflictDoNothing()

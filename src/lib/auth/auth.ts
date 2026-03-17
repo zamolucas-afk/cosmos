@@ -20,7 +20,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         if (!user || !user.passwordHash) return null
         const valid = await bcrypt.compare(password, user.passwordHash)
         if (!valid) return null
-        return { id: user.id, name: user.name, email: user.email, plan: user.plan as 'free' | 'pro' }
+        return { id: user.id, name: user.name, email: user.email, plan: user.plan as 'free' | 'trial' | 'pro', trialEndsAt: user.trialEndsAt }
       },
     }),
   ],

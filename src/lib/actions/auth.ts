@@ -31,7 +31,16 @@ export async function registerAction(_prevState: ActionState, formData: FormData
   if (existing) return { error: 'An account with this email already exists' }
 
   const passwordHash = await bcrypt.hash(result.data.password, 12)
-  await db.insert(users).values({ name: result.data.name, email: result.data.email, passwordHash, plan: 'free' })
+  const now = new Date()
+  const trialEnds = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+  await db.insert(users).values({
+    name: result.data.name,
+    email: result.data.email,
+    passwordHash,
+    plan: 'trial',
+    trialStartedAt: now,
+    trialEndsAt: trialEnds,
+  })
 
   await signIn('credentials', { email: result.data.email, password: result.data.password, redirectTo: '/' })
 }
@@ -43,7 +52,8 @@ export async function loginAction(_prevState: ActionState, formData: FormData): 
       password: formData.get('password') as string,
       redirectTo: '/',
     })
-  } catch {
+  } catch (error) {
+    if ((error as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) throw error
     return { error: 'Invalid email or password' }
   }
 }

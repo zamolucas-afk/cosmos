@@ -17,12 +17,14 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id
         token.plan = (user as { plan?: string }).plan ?? 'free'
+        token.trialEndsAt = (user as { trialEndsAt?: Date | null }).trialEndsAt?.toISOString() ?? null
       }
       return token
     },
     session({ session, token }) {
       session.user.id = token.id as string
-      session.user.plan = (token.plan as 'free' | 'pro') ?? 'free'
+      session.user.plan = (token.plan as 'free' | 'trial' | 'pro') ?? 'free'
+      session.user.trialEndsAt = (token.trialEndsAt as string) ?? null
       return session
     },
   },
