@@ -40,7 +40,7 @@ export default function AccountView({ user, subscription, usedThisMonth, upgrade
 
       {showBanner && (
         <div className="mb-6 bg-success/10 border border-success/30 rounded-lg px-4 py-3 flex items-center justify-between">
-          <p className="text-success text-sm">You&apos;re now on Cosmos Pro. Enjoy unlimited recordings!</p>
+          <p className="text-success text-sm">You&apos;re now on Cosmos Pro. Enjoy unlimited notes!</p>
           <button onClick={() => setShowBanner(false)} className="text-text-muted hover:text-text-primary text-xs">✕</button>
         </div>
       )}
@@ -62,7 +62,7 @@ export default function AccountView({ user, subscription, usedThisMonth, upgrade
           <div className="flex items-center justify-between">
             <div>
               <span className="text-text-primary">Free plan</span>
-              <p className="text-text-secondary text-sm mt-0.5">{usedThisMonth}/10 recordings used this month</p>
+              <p className="text-text-secondary text-sm mt-0.5">{usedThisMonth}/3 notes used this month</p>
             </div>
             <Link href="/pricing"
               className="px-4 py-2 rounded bg-accent-violet text-white text-sm hover:bg-accent-light transition-colors"

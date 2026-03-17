@@ -18,7 +18,7 @@ export default function RecordingOrb({
         onClick={onClick}
         disabled={isThinking}
         className="relative w-40 h-40 rounded-full cursor-pointer disabled:cursor-default
-          flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+          flex items-center justify-center"
         style={{
           background: isRecording
             ? 'radial-gradient(circle, #a855f7, #7c3aed)'
@@ -32,7 +32,7 @@ export default function RecordingOrb({
             ? 'orb-record 1.2s ease-in-out infinite'
             : 'orb-idle 3s ease-in-out infinite',
         }}
-        aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+        aria-label={isRecording ? 'Save note' : 'Start note'}
       >
         {isThinking ? (
           <div className="w-full h-full rounded-full border-4 border-accent-light/30 border-t-accent-light"
@@ -52,7 +52,7 @@ export default function RecordingOrb({
       </button>
 
       <p className="text-text-secondary text-sm tracking-wider uppercase text-xs">
-        {isThinking ? 'Processing…' : isRecording ? '' : 'Tap to record'}
+        {isThinking ? 'Processing…' : isRecording ? '' : 'Tap to create note'}
       </p>
 
       <style>{`

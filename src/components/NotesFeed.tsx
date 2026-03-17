@@ -25,7 +25,7 @@ export default function NotesFeed({ notes }: { notes: Note[] }) {
                 style={{ boxShadow: '0 0 20px #7c3aed66' }} />
             </div>
             <p className="text-text-secondary text-sm">
-              {notes.length === 0 ? 'Nothing recorded yet. Tap the orb to begin.' : 'No notes match your search.'}
+              {notes.length === 0 ? 'No notes yet. Tap to create one.' : 'No notes match your search.'}
             </p>
           </div>
         ) : (
@@ -40,7 +40,7 @@ export default function NotesFeed({ notes }: { notes: Note[] }) {
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-accent-violet cursor-pointer
           flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
         style={{ boxShadow: '0 0 30px #7c3aed88, 0 0 60px #7c3aed44', animation: 'orb-pulse 3s ease-in-out infinite' }}
-        aria-label="New recording"
+        aria-label="New Note"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
           <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>

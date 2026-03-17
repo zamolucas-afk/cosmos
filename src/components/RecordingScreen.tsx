@@ -126,8 +126,8 @@ export default function RecordingScreen() {
       {showBackConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
           <div className="bg-surface rounded-xl p-6 max-w-sm w-full border border-accent-dim/30">
-            <p className="text-text-primary font-heading mb-2">Stop recording?</p>
-            <p className="text-text-secondary text-sm mb-6">Your current recording will be discarded.</p>
+            <p className="text-text-primary font-heading mb-2">Discard note?</p>
+            <p className="text-text-secondary text-sm mb-6">Your current note will be discarded.</p>
             <div className="flex gap-3">
               <button onClick={() => router.push('/')}
                 className="flex-1 py-2 rounded bg-error/20 text-error text-sm border border-error/30 hover:bg-error/30 transition-colors cursor-pointer">
@@ -135,7 +135,7 @@ export default function RecordingScreen() {
               </button>
               <button onClick={() => setShowBackConfirm(false)}
                 className="flex-1 py-2 rounded bg-surface-raised text-text-secondary text-sm border border-accent-dim/30 hover:bg-accent-dim/20 transition-colors cursor-pointer">
-                Keep recording
+                Keep note
               </button>
             </div>
           </div>

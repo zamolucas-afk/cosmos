@@ -7,8 +7,8 @@ import { initiateSubscription } from '@/lib/actions/subscription'
 type Plan = 'free' | 'pro'
 
 const features = {
-  free: ['10 recordings / month', 'Cloud sync', 'Claude AI polish', 'Full-text search'],
-  pro: ['Unlimited recordings', 'Cloud sync', 'Claude AI polish', 'Full-text search', 'Priority processing'],
+  free: ['3 notes / month', 'Cloud sync', 'Claude AI polish', 'Full-text search'],
+  pro: ['Unlimited notes', 'Cloud sync', 'Claude AI polish', 'Full-text search', 'Priority processing'],
 }
 
 export default function PricingCard({
@@ -39,7 +39,7 @@ export default function PricingCard({
       <div>
         <h3 className="font-heading text-xl text-text-primary">{isPro ? 'Pro' : 'Free'}</h3>
         <div className="mt-1">
-          <span className="text-3xl font-heading text-text-primary">{isPro ? 'R99' : 'R0'}</span>
+          <span className="text-3xl font-heading text-text-primary">{isPro ? 'R149' : 'R0'}</span>
           <span className="text-text-muted text-sm">/month</span>
         </div>
       </div>
