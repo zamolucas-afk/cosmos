@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import InsightsView from './InsightsView'
+import AskChat from './AskChat'
 
 type NoteData = {
+  id: string
   polishedTranscript: string
   summary: string | null
   actionItems: unknown
@@ -53,9 +55,7 @@ export default function NoteDetailTabs({ note }: { note: NoteData }) {
       )}
 
       {activeTab === 'Ask' && (
-        <div className="text-center py-12">
-          <p className="text-text-muted text-sm">Ask about this note — coming soon</p>
-        </div>
+        <AskChat noteId={note.id} />
       )}
     </div>
   )
