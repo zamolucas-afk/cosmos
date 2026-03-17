@@ -220,17 +220,23 @@ npm run db:migrate   # Run migrations
 
 ## Environment Setup (before first run)
 
-1. **Neon Postgres** — create project at https://neon.tech (free tier)
+1. **Neon Postgres** ✅ — project `cosmos` created at https://console.neon.tech, AWS US East 1 (N. Virginia), Postgres 17. Copy the connection string from the Neon dashboard into `DATABASE_URL`.
 2. **Anthropic API key** — from https://console.anthropic.com
 3. **PayFast sandbox** — register at https://sandbox.payfast.co.za
 4. **Auth secret** — `openssl rand -base64 32`
 
 ```bash
 cp .env.example .env.local
-# Fill in all values
-npm run db:push
+# Fill in all values — DATABASE_URL from Neon dashboard, AUTH_SECRET, ANTHROPIC_API_KEY, PAYFAST_* etc.
+npm run db:push   # creates all tables in Neon
 npm run dev
 ```
+
+### Neon connection string format
+```
+postgresql://user:password@ep-xxx-yyy.us-east-1.aws.neon.tech/neondb?sslmode=require
+```
+Get it from: Neon dashboard → your project → **Connection Details** → copy the full connection string.
 
 ## Environment Variables
 
