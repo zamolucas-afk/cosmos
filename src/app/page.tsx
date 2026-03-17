@@ -20,6 +20,7 @@ export default async function HomePage() {
     <div className="min-h-screen bg-background">
       <Navbar />
       <NotesFeed notes={userNotes} />
+      <div className="h-20" /> {/* spacer for fixed CTA */}
     </div>
   )
 }
