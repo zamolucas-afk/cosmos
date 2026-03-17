@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { notes } from '@/lib/db/schema'
 import { and, eq } from 'drizzle-orm'
 import NoteDetail from '@/components/NoteDetail'
+import { markViewed } from '@/lib/actions/notes'
 
 export default async function NoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -15,6 +16,9 @@ export default async function NoteDetailPage({ params }: { params: Promise<{ id:
     .limit(1)
 
   if (!note) notFound()
+
+  // Fire-and-forget — don't block page render
+  markViewed(note.id).catch(() => {})
 
   return <NoteDetail note={note} />
 }
