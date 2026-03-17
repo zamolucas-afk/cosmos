@@ -50,11 +50,12 @@ Strategy is `jwt`. There is no `sessions` table. Session data lives in an HTTP-o
 ### Zod v4 API
 Use `.issues` (not `.errors`) on a `ZodError`.
 
-### Server Actions with return values
-When a Server Action returns a value and is used in a `<form action>` prop, cast it:
-```tsx
-<form action={myAction as unknown as (formData: FormData) => Promise<void>}>
+### Server Actions with `useActionState`
+Server actions used with `useActionState` must have the signature `(prevState, formData)`:
+```ts
+export async function loginAction(_prevState: unknown, formData: FormData) { ... }
 ```
+Do NOT use `as unknown as (formData: FormData) => Promise<void>` casts — they are not needed with the correct signature.
 
 ### Next.js 16 dynamic params
 `params` and `searchParams` are `Promise<...>` in Next.js 16 App Router:
@@ -71,7 +72,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 `polishNote` in `src/lib/claude.ts` uses `claude-sonnet-4-6`, truncates input to 25k chars, parses JSON response, falls back to `{ title: 'Voice Note', polished: rawTranscript }` on any error.
 
 ### Web Speech API
-Browser-only — not available in Node.js or tests. All recorder logic lives in `src/hooks/useRecorder.ts` which should only be used inside `'use client'` components. The hook uses `SpeechRecognition` for transcription and `AudioContext`/`AnalyserNode` for waveform amplitude.
+Browser-only — not available in Node.js or tests. All recorder logic lives in `src/hooks/useRecorder.ts` which should only be used inside `'use client'` components. The hook uses `SpeechRecognition` for transcription and `AudioContext`/`AnalyserNode` for waveform amplitude. SpeechRecognition types are typed as `any` in the hook since the Web Speech API TS types are inconsistent across environments.
+
+### Navbar is an async Server Component
+Never import `Navbar` inside a `'use client'` component. Always render it in a parent server component (page.tsx) and pass children down if needed.
+
+### DrizzleAdapter type cast
+When passing `DrizzleAdapter(db)` to NextAuth config, cast it: `adapter: DrizzleAdapter(db) as NextAuthConfig['adapter']`.
 
 ---
 
@@ -94,7 +101,7 @@ Browser-only — not available in Node.js or tests. All recorder logic lives in 
 ### Typography
 - **Headings:** Space Grotesk — `font-heading` class
 - **Body:** Inter — `font-body` class
-- Both loaded via `next/font/google` in `src/app/layout.tsx`
+- Both loaded via `next/font/google` in `src/app/layout.tsx` with `display: 'swap'`
 
 ### Glow effects
 Violet glows are applied inline: `style={{ boxShadow: '0 0 30px #7c3aed88' }}`
@@ -106,27 +113,32 @@ Violet glows are applied inline: `style={{ boxShadow: '0 0 30px #7c3aed88' }}`
 ```
 src/
   app/
-    login/page.tsx          # Login form (client component)
-    register/page.tsx       # Register form (client component)
-    account/page.tsx        # Account + billing page
-    pricing/page.tsx        # Pricing / upgrade page
-    record/page.tsx         # Recording page (voice capture)
-    notes/[id]/page.tsx     # Note detail page
+    login/page.tsx              # Login form (client, useActionState)
+    register/page.tsx           # Register form (client, useActionState)
+    account/page.tsx            # Account page (server — renders Navbar + AccountView)
+    pricing/page.tsx            # Pricing page (server — Free vs Pro cards)
+    record/page.tsx             # Recording page (server — pre-flight limit check)
+    notes/[id]/page.tsx         # Note detail (server — fetches + ownership check)
     api/
-      auth/[...nextauth]/route.ts   # Auth.js route handler
-      payfast/notify/route.ts       # PayFast ITN webhook
-    page.tsx                # Home — notes feed (server component)
-    layout.tsx              # Root layout (fonts, html/body)
-    globals.css             # Tailwind v4 @theme tokens
+      auth/[...nextauth]/route.ts       # Auth.js route handler
+      payfast/notify/route.ts           # PayFast ITN webhook
+      payfast/__tests__/notify.test.ts
+    page.tsx                    # Home — notes feed (server component)
+    layout.tsx                  # Root layout (fonts, html/body)
+    globals.css                 # Tailwind v4 @theme tokens
   components/
     Navbar.tsx              # Async server component — plan badge, sign out
     NoteCard.tsx            # Note list item (link card)
     NotesFeed.tsx           # Client shell — search + list + record FAB
+    NoteDetail.tsx          # Note detail view — copy, delete confirmation
     SearchBar.tsx           # Client-side note filter
-    StarField.tsx           # Animated star background (canvas)
-    Waveform.tsx            # Audio amplitude bars (client)
-    RecordingOrb.tsx        # Tap-to-record orb (client)
-    __tests__/
+    StarField.tsx           # Animated star background (CSS divs)
+    Waveform.tsx            # Audio amplitude bars (client, requestAnimationFrame)
+    RecordingOrb.tsx        # Tap-to-record orb — idle/recording/thinking states
+    RecordingScreen.tsx     # Full recording UI (client) — includes FallbackTextInput
+    PricingCard.tsx         # Free/Pro pricing card (client)
+    AccountView.tsx         # Account/billing view (client)
+    __tests__/NoteCard.test.tsx
   hooks/
     useRecorder.ts          # MediaRecorder + SpeechRecognition + AudioContext hook
   lib/
@@ -134,9 +146,11 @@ src/
       auth.ts               # Auth.js full config — Node.js only
       auth.config.ts        # Edge-safe config subset (middleware)
     actions/
-      auth.ts               # registerAction, loginAction, signOutAction
-      notes.ts              # saveNote (with limit), deleteNote, getMonthlyRecordingCount
-      subscriptions.ts      # createCheckout, cancelSubscription
+      auth.ts               # registerAction(_prevState, formData), loginAction, signOutAction, validateRegisterInput
+      notes.ts              # saveNote (limit-enforced), deleteNote, getMonthlyRecordingCount
+      subscription.ts       # initiateSubscription, cancelSubscription
+      __tests__/auth.test.ts
+      __tests__/notes.test.ts
     db/
       index.ts              # db (HTTP) + poolDb (Pool) exports
       schema/
@@ -146,15 +160,18 @@ src/
         payments.ts
         auth-tables.ts
         index.ts            # re-exports all
+      __tests__/schema.test.ts
     claude.ts               # polishNote — Claude claude-sonnet-4-6
-    payfast.ts              # generateSignature, verifyItnSignature, buildApiHeaders
+    payfast.ts              # generateSignature, verifyItnSignature, buildApiHeaders, getPayFastUrl
     utils.ts                # cn(), formatDuration()
-    __tests__/
-  middleware.ts             # Route protection (edge-safe)
+    __tests__/payfast.test.ts
+    __tests__/claude.test.ts
+  middleware.ts             # Route protection (edge-safe, imports only auth.config.ts)
   test/setup.ts             # Vitest + jsdom setup
   types/next-auth.d.ts      # Session type augmentation (id, plan)
 
 drizzle.config.ts
+CLAUDE.md
 ```
 
 ---
@@ -179,8 +196,10 @@ Composite index on `notes(user_id, created_at)` for monthly count queries.
 - **Free:** 10 recordings/month (enforced in `saveNote` by reading DB, not JWT)
 - **Pro:** Unlimited recordings, R99/month via PayFast recurring subscription
 - PayFast sends ITN (Instant Transaction Notification) to `/api/payfast/notify`
-- On `COMPLETE`: upsert subscription, set `users.plan = 'pro'` (atomic via `poolDb` transaction)
+- On `COMPLETE`: upsert subscription, set `users.plan = 'pro'` (atomic via `poolDb` transaction) — idempotent via `payfastPaymentId UNIQUE`
 - On `CANCELLED`: set subscription cancelled, downgrade plan only if `currentPeriodEnd <= now()`
+- On `FAILED`: insert failed payment record, no plan change
+- `PENDING`: no-op
 
 ---
 
@@ -189,25 +208,37 @@ Composite index on `notes(user_id, created_at)` for monthly count queries.
 ```bash
 npm run dev          # Development server
 npm run build        # Production build
-npm test             # Run tests once
+npm test             # Run tests (25 tests, 7 files — all passing)
 npm run test:watch   # Watch mode
 npm run lint         # ESLint
-npm run db:push      # Push schema to Neon
+npm run db:push      # Push schema to Neon (requires DATABASE_URL in .env.local)
 npm run db:generate  # Generate migration SQL
 npm run db:migrate   # Run migrations
 ```
 
 ---
 
-## Environment Variables
+## Environment Setup (before first run)
 
-Copy `.env.example` to `.env.local`:
+1. **Neon Postgres** — create project at https://neon.tech (free tier)
+2. **Anthropic API key** — from https://console.anthropic.com
+3. **PayFast sandbox** — register at https://sandbox.payfast.co.za
+4. **Auth secret** — `openssl rand -base64 32`
+
+```bash
+cp .env.example .env.local
+# Fill in all values
+npm run db:push
+npm run dev
+```
+
+## Environment Variables
 
 | Variable | Purpose |
 |---|---|
 | `DATABASE_URL` | Neon Postgres connection string |
 | `AUTH_SECRET` | `openssl rand -base64 32` |
-| `AUTH_TRUST_HOST` | Set `true` on Netlify (behind reverse proxy) |
+| `AUTH_TRUST_HOST` | Set `true` on Netlify only (behind reverse proxy) |
 | `ANTHROPIC_API_KEY` | Claude API key |
 | `PAYFAST_MERCHANT_ID` | PayFast merchant ID |
 | `PAYFAST_MERCHANT_KEY` | PayFast merchant key |
@@ -217,39 +248,28 @@ Copy `.env.example` to `.env.local`:
 
 ---
 
-## Spec & Plan
+## Implementation Status — COMPLETE ✅
 
-- **Spec:** `c:/dev/my-legacy-memories/docs/superpowers/specs/2026-03-17-cosmos-ai-note-taker-design.md`
-- **Plan:** `c:/dev/my-legacy-memories/docs/superpowers/plans/2026-03-17-cosmos-ai-note-taker.md` (25 tasks)
+All 25 tasks implemented, 25 tests passing, production build verified.
+
+**What's built:**
+- Full auth flow (register, login, JWT sessions, route protection)
+- Notes CRUD (create via voice, view, delete) with DB-authoritative free-tier limit
+- Web Speech API recording with AudioContext waveform visualization
+- Claude claude-sonnet-4-6 transcript polishing + title generation (with JSON fallback)
+- Deep Space UI (violet/purple glow, StarField background, pulsing RecordingOrb)
+- PayFast freemium subscription (R99/month Pro, ITN webhook, cancel flow)
+- Pricing page, Account page with subscription management
+
+**Next steps before launch:**
+1. Provision Neon database and run `db:push`
+2. Set up environment variables (see above)
+3. Test PayFast sandbox end-to-end (ngrok for ITN delivery)
+4. Deploy to Netlify
 
 ---
 
-## What's Been Built (Tasks 1–12)
+## Spec & Plan
 
-- ✅ Next.js 16 scaffolded, Tailwind v4 Deep Space tokens, Vitest configured
-- ✅ Session type augmentation (`src/types/next-auth.d.ts`)
-- ✅ Drizzle config + Neon HTTP + Pool clients
-- ✅ Full DB schema (users, notes, subscriptions, payments, auth-tables)
-- ✅ Auth.js v5 — edge-safe config, Credentials provider, middleware
-- ✅ Auth server actions (register, login, sign out) + tests
-- ✅ Login page + Register page (Deep Space styling)
-- ✅ Navbar (server component — plan badge, usage count, sign out)
-- ✅ NoteCard + SearchBar components + tests
-- ✅ PayFast utility (signature, ITN verification) + tests
-- ✅ Claude `polishNote` helper + tests
-
-## What's Next (Tasks 13–25)
-
-- Task 13: Notes server actions (saveNote with limit, deleteNote)
-- Task 14: Notes feed page
-- Task 15: Note detail page
-- Task 16: StarField background
-- Task 17: Waveform component
-- Task 18: useRecorder hook
-- Task 19: RecordingOrb component
-- Task 20: Recording page
-- Task 21: Subscription server actions
-- Task 22: Pricing page
-- Task 23: Account page
-- Task 24: PayFast ITN webhook
-- Task 25: Final build verification
+- **Spec:** `c:/dev/my-legacy-memories/docs/superpowers/specs/2026-03-17-cosmos-ai-note-taker-design.md`
+- **Plan:** `c:/dev/my-legacy-memories/docs/superpowers/plans/2026-03-17-cosmos-ai-note-taker.md`
