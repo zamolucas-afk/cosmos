@@ -52,7 +52,7 @@ function FallbackTextInput() {
 
 export default function RecordingScreen() {
   const router = useRouter()
-  const { state, transcript, duration, error, analyser, start, stop } = useRecorder()
+  const { state, transcript, duration, error, analyser, start, stop, reset } = useRecorder()
   const [saveError, setSaveError] = useState<string | null>(null)
   const [showBackConfirm, setShowBackConfirm] = useState(false)
 
@@ -62,14 +62,20 @@ export default function RecordingScreen() {
     } else if (state === 'recording') {
       const { transcript: raw, duration: dur } = stop()
       setSaveError(null)
+      if (!raw.trim()) {
+        reset()
+        setSaveError('No transcript captured. Please try again.')
+        return
+      }
       try {
         const { id } = await saveNote(raw, dur)
         router.push(`/notes/${id}`)
       } catch (e: any) {
+        reset()
         setSaveError(e.message || 'Failed to save. Please try again.')
       }
     }
-  }, [state, start, stop, router])
+  }, [state, start, stop, reset, router])
 
   const handleBack = () => {
     if (state === 'recording') {
