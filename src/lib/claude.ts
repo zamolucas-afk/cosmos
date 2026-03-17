@@ -1,33 +1,75 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { InsightsSchema } from '@/lib/validation/insights'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+let _client: Anthropic | null = null
+function getClient(): Anthropic {
+  if (!_client) _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  return _client
+}
 
-const SYSTEM_PROMPT = `You are processing a voice note transcript. Do two things and return valid JSON only:
+const SYSTEM_PROMPT = `You are an AI assistant that processes voice note transcripts.
+Given a raw transcript, return a JSON object with these fields:
+- title: concise, descriptive title (3-6 words, no quotes or punctuation at the end)
+- emoji: single emoji that best represents the topic
+- polished: cleaned-up transcript with proper grammar, punctuation, and paragraph breaks
+- summary: 2-3 sentence overview of the key points
+- actionItems: array of { text, assignee? } for any action items mentioned (empty array if none)
+- keyDecisions: array of strings for decisions made (empty array if none)
+- tags: array of 2-5 lowercase topic tags (e.g., "pricing", "hiring", "s4hana")
 
-1. "title": A short descriptive title for this note (max 6 words, no punctuation, no quotes).
-2. "polished": The cleaned transcript — fix punctuation, remove filler words (um, uh, like, you know, sort of), correct grammar, format into clean paragraphs. Keep all meaning intact. Do not summarise. Do not add anything. Just clean up what was said.
+Return ONLY valid JSON. No markdown, no code blocks, no explanation.`
 
-Return exactly: {"title": "...", "polished": "..."}`
+type PolishResult = {
+  title: string
+  emoji: string
+  polished: string
+  summary: string
+  actionItems: { text: string; assignee?: string }[]
+  keyDecisions: string[]
+  tags: string[]
+}
 
-export async function polishNote(rawTranscript: string): Promise<{ title: string; polished: string }> {
-  const truncated = rawTranscript.slice(0, 25000)
+const FALLBACK: Omit<PolishResult, 'polished'> = {
+  title: 'Voice Note',
+  emoji: '📝',
+  summary: '',
+  actionItems: [],
+  keyDecisions: [],
+  tags: [],
+}
 
+export async function polishNote(rawTranscript: string): Promise<PolishResult> {
   try {
-    const response = await client.messages.create({
+    const truncated = rawTranscript.slice(0, 25000)
+    const response = await getClient().messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+      max_tokens: 8192,
       temperature: 0,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `Raw transcript:\n"""\n${truncated}\n"""` }],
+      messages: [{ role: 'user', content: truncated }],
     })
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const text = response.content[0]?.type === 'text' ? response.content[0].text : null
+    if (!text) return { ...FALLBACK, polished: rawTranscript }
+
     const parsed = JSON.parse(text)
-    if (typeof parsed.title === 'string' && typeof parsed.polished === 'string') {
-      return { title: parsed.title, polished: parsed.polished }
+    const validated = InsightsSchema.safeParse(parsed)
+
+    if (validated.success) {
+      return validated.data
     }
-    throw new Error('Invalid shape')
+
+    // Partial fallback: extract what we can
+    return {
+      title: typeof parsed.title === 'string' ? parsed.title : FALLBACK.title,
+      emoji: typeof parsed.emoji === 'string' ? parsed.emoji : FALLBACK.emoji,
+      polished: typeof parsed.polished === 'string' ? parsed.polished : rawTranscript,
+      summary: typeof parsed.summary === 'string' ? parsed.summary : '',
+      actionItems: Array.isArray(parsed.actionItems) ? parsed.actionItems : [],
+      keyDecisions: Array.isArray(parsed.keyDecisions) ? parsed.keyDecisions : [],
+      tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+    }
   } catch {
-    return { title: 'Voice Note', polished: rawTranscript }
+    return { ...FALLBACK, polished: rawTranscript }
   }
 }
