@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { checkAndExpireTrial } from '@/lib/trial'
+import { withRetry } from '@/lib/utils'
 import PricingCard from '@/components/PricingCard'
 
 export default async function PricingPage({
@@ -21,11 +22,12 @@ export default async function PricingPage({
     currentPlan = await checkAndExpireTrial(session.user.id)
 
     if (currentPlan === 'trial') {
-      const [user] = await db
-        .select({ trialEndsAt: users.trialEndsAt })
-        .from(users)
-        .where(eq(users.id, session.user.id))
-        .limit(1)
+      const [user] = await withRetry(() =>
+        db.select({ trialEndsAt: users.trialEndsAt })
+          .from(users)
+          .where(eq(users.id, session.user.id))
+          .limit(1)
+      )
       trialEndsAt = user?.trialEndsAt?.toISOString() ?? null
     }
   }

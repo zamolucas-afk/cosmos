@@ -5,6 +5,7 @@ import { users, subscriptions } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { checkAndExpireTrial } from '@/lib/trial'
 import { getMonthlyNoteCount, getTrialNoteCount } from '@/lib/actions/notes'
+import { withRetry } from '@/lib/utils'
 import AccountView from '@/components/AccountView'
 import Navbar from '@/components/Navbar'
 
@@ -20,14 +21,14 @@ export default async function AccountPage({
   // Authoritative plan — also expires stale trials
   const plan = await checkAndExpireTrial(session.user.id)
 
-  const [user] = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1)
+  const [user] = await withRetry(() =>
+    db.select().from(users).where(eq(users.id, session.user.id)).limit(1)
+  )
   if (!user) redirect('/login')
 
-  const [sub] = await db
-    .select()
-    .from(subscriptions)
-    .where(eq(subscriptions.userId, user.id))
-    .limit(1)
+  const [sub] = await withRetry(() =>
+    db.select().from(subscriptions).where(eq(subscriptions.userId, user.id)).limit(1)
+  )
 
   // Compute usage count based on authoritative plan
   let usedCount = 0

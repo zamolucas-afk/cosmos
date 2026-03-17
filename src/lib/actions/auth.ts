@@ -27,7 +27,13 @@ export async function registerAction(_prevState: ActionState, formData: FormData
   })
   if (!result.success) return { error: result.error.issues[0].message }
 
-  const [existing] = await db.select().from(users).where(eq(users.email, result.data.email)).limit(1)
+  const [existing] = await (async () => {
+    for (let i = 0; i < 3; i++) {
+      try { return await db.select().from(users).where(eq(users.email, result.data.email)).limit(1) }
+      catch (e) { if (i === 2) throw e }
+    }
+    return []
+  })()
   if (existing) return { error: 'An account with this email already exists' }
 
   const passwordHash = await bcrypt.hash(result.data.password, 12)

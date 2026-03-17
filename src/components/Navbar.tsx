@@ -21,35 +21,37 @@ export default async function Navbar() {
   let usedCount = 0
   let trialDaysLeft = 0
 
-  if (plan === 'trial') {
-    // Get trialStartedAt and trialEndsAt from DB (session may be stale)
-    const [user] = await db
-      .select({ trialStartedAt: users.trialStartedAt, trialEndsAt: users.trialEndsAt })
-      .from(users)
-      .where(eq(users.id, session.user.id))
-      .limit(1)
+  try {
+    if (plan === 'trial') {
+      const [user] = await db
+        .select({ trialStartedAt: users.trialStartedAt, trialEndsAt: users.trialEndsAt })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1)
 
-    if (user?.trialStartedAt) {
+      if (user?.trialStartedAt) {
+        const result = await db
+          .select({ count: count() })
+          .from(notes)
+          .where(and(eq(notes.userId, session.user.id), gte(notes.createdAt, user.trialStartedAt)))
+        usedCount = result[0]?.count ?? 0
+      }
+
+      if (user?.trialEndsAt) {
+        trialDaysLeft = Math.max(
+          0,
+          Math.ceil((user.trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        )
+      }
+    } else if (plan === 'free') {
       const result = await db
         .select({ count: count() })
         .from(notes)
-        .where(and(eq(notes.userId, session.user.id), gte(notes.createdAt, user.trialStartedAt)))
+        .where(and(eq(notes.userId, session.user.id), gte(notes.createdAt, getFirstDayOfMonth())))
       usedCount = result[0]?.count ?? 0
     }
-
-    if (user?.trialEndsAt) {
-      const now = Date.now()
-      trialDaysLeft = Math.max(
-        0,
-        Math.ceil((user.trialEndsAt.getTime() - now) / (1000 * 60 * 60 * 24))
-      )
-    }
-  } else if (plan === 'free') {
-    const result = await db
-      .select({ count: count() })
-      .from(notes)
-      .where(and(eq(notes.userId, session.user.id), gte(notes.createdAt, getFirstDayOfMonth())))
-    usedCount = result[0]?.count ?? 0
+  } catch {
+    // Neon cold-start can fail — show 0 rather than crashing the page
   }
 
   return (
