@@ -18,6 +18,7 @@ export function useRecorder() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
   const transcriptRef = useRef<string>('')
+  const stateRef = useRef<RecorderState>('idle')
 
   const getSpeechRecognition = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -77,11 +78,28 @@ export function useRecorder() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (e: any) => {
+      // Network/aborted errors are transient — auto-restart recognition
+      if (e.error === 'network' || e.error === 'aborted') {
+        try { recognition.stop() } catch { /* already stopped */ }
+        setTimeout(() => {
+          try { recognition.start() } catch { /* ignore if destroyed */ }
+        }, 300)
+        return
+      }
       if (e.error !== 'no-speech') setError(`Recognition error: ${e.error}`)
+    }
+
+    // Auto-restart when recognition ends unexpectedly (browser kills it after ~60s silence)
+    recognition.onend = () => {
+      // Only restart if we're still in recording state
+      if (stateRef.current === 'recording') {
+        try { recognition.start() } catch { /* ignore */ }
+      }
     }
 
     recognitionRef.current = recognition
     recognition.start()
+    stateRef.current = 'recording'
     setState('recording')
 
     intervalRef.current = setInterval(() => {
@@ -100,12 +118,14 @@ export function useRecorder() {
     streamRef.current?.getTracks().forEach(t => t.stop())
     audioCtxRef.current?.close()
     setAnalyser(null)
+    stateRef.current = 'thinking'
     setState('thinking')
 
     return { transcript: finalTranscript, duration: finalDuration }
   }, [])
 
   const reset = useCallback(() => {
+    stateRef.current = 'idle'
     setState('idle')
     setTranscript('')
     transcriptRef.current = ''

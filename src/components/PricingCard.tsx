@@ -69,7 +69,7 @@ export default function PricingCard({
 
       {/* Pro card */}
       <div
-        className="rounded-xl p-6 border bg-surface border-accent-violet/50 flex flex-col gap-5 relative overflow-hidden"
+        className="rounded-xl p-6 border bg-surface border-accent-violet/50 flex flex-col gap-5 relative overflow-hidden violet-glow"
         style={{ boxShadow: '0 0 40px #7c3aed22' }}
       >
         <div className="absolute top-3 right-3 text-xs text-accent-light border border-accent-light/30 rounded-full px-2 py-0.5">
@@ -106,7 +106,7 @@ export default function PricingCard({
               disabled={isPending}
               onClick={() => startTransition(() => initiateSubscription())}
               className="py-2.5 rounded bg-accent-violet text-white text-sm font-heading
-                hover:bg-accent-light transition-colors disabled:opacity-50 cursor-pointer"
+                hover:bg-accent-light transition-colors disabled:opacity-50 cursor-pointer violet-glow"
               style={{ boxShadow: '0 0 20px #7c3aed44' }}
             >
               {isPending ? 'Redirecting…' : 'Subscribe now — R149/month'}
@@ -117,7 +117,7 @@ export default function PricingCard({
             disabled={isPending}
             onClick={() => startTransition(() => initiateSubscription())}
             className="mt-auto py-2.5 rounded bg-accent-violet text-white text-sm font-heading
-              hover:bg-accent-light transition-colors disabled:opacity-50 cursor-pointer"
+              hover:bg-accent-light transition-colors disabled:opacity-50 cursor-pointer violet-glow"
             style={{ boxShadow: '0 0 20px #7c3aed44' }}
           >
             {isPending ? 'Redirecting…' : 'Start 7-day free trial'}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Mic } from 'lucide-react'
 import NoteCard from './NoteCard'
+import CollectionCard from './CollectionCard'
 import SearchBar from './SearchBar'
 import NoteTabs, { type NoteTab } from './NoteTabs'
 // NOTE: Do NOT import Navbar here — it is an async Server Component and cannot be imported in a 'use client' module
@@ -24,7 +25,9 @@ function filterByTab(notes: Note[], tab: NoteTab): Note[] {
   }
 }
 
-export default function NotesFeed({ notes }: { notes: Note[] }) {
+type Collection = { tag: string; noteCount: number }
+
+export default function NotesFeed({ notes, collections = [] }: { notes: Note[]; collections?: Collection[] }) {
   const [activeTab, setActiveTab] = useState<NoteTab>('All')
   const [searchFiltered, setSearchFiltered] = useState(notes)
 
@@ -40,22 +43,30 @@ export default function NotesFeed({ notes }: { notes: Note[] }) {
         </div>
 
         {activeTab === 'Collections' ? (
-          <div className="text-center py-20 px-4">
-            <div className="w-16 h-16 rounded-full bg-accent-dim/30 mx-auto mb-4 flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full bg-accent-violet/60"
-                style={{ boxShadow: '0 0 20px #7c3aed66' }} />
+          collections.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 px-4">
+              {collections.map(c => (
+                <CollectionCard key={c.tag} tag={c.tag} noteCount={c.noteCount} summary={null} />
+              ))}
             </div>
-            <p className="text-text-secondary text-sm">Collections coming soon</p>
-          </div>
+          ) : (
+            <div className="text-center py-20 px-4">
+              <div className="w-16 h-16 rounded-full bg-accent-dim/30 mx-auto mb-4 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-accent-violet/60 violet-glow"
+                  style={{ boxShadow: '0 0 20px #7c3aed66' }} />
+              </div>
+              <p className="text-text-secondary text-sm">Tags appear automatically as you take notes.</p>
+            </div>
+          )
         ) : tabFiltered.length === 0 ? (
           <div className="text-center py-20 px-4">
-            <div className="w-16 h-16 rounded-full bg-accent-dim/30 mx-auto mb-4 flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full bg-accent-violet/60"
+            <Link href="/record" className="block mx-auto mb-4 w-16 h-16 rounded-full bg-accent-dim/30 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-accent-violet/60 violet-glow"
                 style={{ boxShadow: '0 0 20px #7c3aed66' }} />
-            </div>
+            </Link>
             <p className="text-text-secondary text-sm">
               {notes.length === 0
-                ? 'No notes yet. Tap to create one.'
+                ? 'No notes yet. Tap the orb to begin.'
                 : activeTab === 'Favorites'
                 ? 'No favourites yet. Star a note to see it here.'
                 : activeTab === 'Meetings'
@@ -72,7 +83,7 @@ export default function NotesFeed({ notes }: { notes: Note[] }) {
 
       <Link
         href="/record"
-        className="fixed bottom-6 left-4 right-4 max-w-2xl mx-auto py-3.5 rounded-2xl
+        className="violet-glow-strong fixed bottom-6 left-4 right-4 max-w-2xl mx-auto py-3.5 rounded-2xl
           bg-gradient-to-r from-accent-violet to-accent-light text-white font-heading font-semibold
           text-center shadow-[0_0_30px_#7c3aed66,0_4px_20px_rgba(0,0,0,0.4)]
           flex items-center justify-center gap-2 z-10"

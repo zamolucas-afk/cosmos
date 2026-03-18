@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Settings } from 'lucide-react'
 import { auth } from '@/lib/auth/auth'
 import { signOutAction } from '@/lib/actions/auth'
 import { db } from '@/lib/db'
@@ -59,7 +60,7 @@ export default async function Navbar() {
       <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <div
-            className="w-6 h-6 rounded-full bg-accent-violet"
+            className="w-6 h-6 rounded-full bg-accent-violet violet-glow"
             style={{ boxShadow: '0 0 12px #7c3aed88' }}
           />
           <span className="font-heading text-text-primary font-semibold">Cosmos</span>
@@ -73,7 +74,7 @@ export default async function Navbar() {
                 hover:border-accent-light/60 transition-colors"
               style={{ boxShadow: '0 0 8px #7c3aed44' }}
             >
-              Trial {usedCount}/20 · {trialDaysLeft}d left
+              Trial {usedCount}/20 &middot; {trialDaysLeft}d left
             </Link>
           ) : plan === 'free' ? (
             <Link
@@ -88,6 +89,13 @@ export default async function Navbar() {
             </span>
           )}
 
+          <Link
+            href="/settings"
+            className="text-text-secondary hover:text-text-primary transition-colors"
+            aria-label="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
           <Link
             href="/account"
             className="text-text-secondary hover:text-text-primary text-sm transition-colors"

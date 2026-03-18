@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
+import { withRetry } from '@/lib/utils'
 import { authConfig } from './auth.config'
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
@@ -16,11 +17,18 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const { email, password } = credentials as { email: string; password: string }
         if (!email || !password) return null
-        const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
-        if (!user || !user.passwordHash) return null
-        const valid = await bcrypt.compare(password, user.passwordHash)
-        if (!valid) return null
-        return { id: user.id, name: user.name, email: user.email, plan: user.plan as 'free' | 'trial' | 'pro', trialEndsAt: user.trialEndsAt }
+        try {
+          const [user] = await withRetry(() =>
+            db.select().from(users).where(eq(users.email, email)).limit(1)
+          )
+          if (!user || !user.passwordHash) return null
+          const valid = await bcrypt.compare(password, user.passwordHash)
+          if (!valid) return null
+          return { id: user.id, name: user.name, email: user.email, plan: user.plan as 'free' | 'trial' | 'pro', trialEndsAt: user.trialEndsAt }
+        } catch (err) {
+          console.error('[authorize] DB query failed:', err)
+          return null
+        }
       },
     }),
   ],

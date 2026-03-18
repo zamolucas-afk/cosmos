@@ -33,3 +33,79 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-heading);
 }
+
+/* Cloud (Light) theme — overrides Deep Space tokens */
+html[data-theme="cloud"] {
+  --color-background: #f0f4ff;
+  --color-surface: #ffffff;
+  --color-surface-raised: #e8ecf4;
+  --color-accent-violet: #7c3aed;
+  --color-accent-light: #8b5cf6;
+  --color-accent-dim: #ddd6fe;
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-text-muted: #94a3b8;
+  --color-success: #059669;
+  --color-error: #dc2626;
+}
+
+/* Hide stars + show cloud gradient in light mode */
+html[data-theme="cloud"] .star-field {
+  display: none !important;
+}
+
+html[data-theme="cloud"] body {
+  background: linear-gradient(180deg, #e0e8ff 0%, #f0f4ff 40%, #faf5ff 100%) !important;
+}
+
+/* Soften violet glows in light mode */
+html[data-theme="cloud"] .violet-glow {
+  box-shadow: 0 0 20px #7c3aed22, 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-theme="cloud"] .violet-glow-strong {
+  box-shadow: 0 0 30px #7c3aed33, 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Soften recording orb glow in light mode */
+html[data-theme="cloud"] .recording-orb-idle {
+  animation-name: orb-idle-light !important;
+}
+
+@keyframes orb-idle-light {
+  0%, 100% { box-shadow: 0 0 30px #7c3aed33, 0 0 60px #7c3aed22; transform: scale(1); }
+  50% { box-shadow: 0 0 50px #7c3aed44, 0 0 80px #7c3aed33; transform: scale(1.03); }
+}
+
+/* Print styles — clean white layout for notes */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Override Deep Space theme for print */
+  * {
+    color: black !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+  }
+
+  h1, h2, h3 {
+    color: #111 !important;
+  }
+
+  a {
+    color: #333 !important;
+    text-decoration: underline !important;
+  }
+
+  /* Prevent breaks inside content blocks */
+  li, p, .insight-section {
+    break-inside: avoid;
+  }
+}

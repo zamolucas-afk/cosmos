@@ -11,7 +11,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-block w-12 h-12 rounded-full bg-accent-violet mb-4"
+          <div className="inline-block w-12 h-12 rounded-full bg-accent-violet mb-4 violet-glow"
             style={{ boxShadow: '0 0 32px #7c3aed88' }} />
           <h1 className="text-2xl font-heading text-text-primary">Create account</h1>
           <p className="text-text-secondary text-sm mt-1">Start taking voice notes</p>
@@ -42,7 +42,7 @@ export default function RegisterPage() {
 
           <button type="submit" disabled={pending}
             className="mt-2 py-2.5 rounded bg-accent-violet text-white font-heading text-sm
-              hover:bg-accent-light transition-colors disabled:opacity-50 cursor-pointer"
+              hover:bg-accent-light transition-colors disabled:opacity-50 cursor-pointer violet-glow"
             style={{ boxShadow: '0 0 20px #7c3aed44' }}>
             {pending ? 'Creating account...' : 'Create account'}
           </button>

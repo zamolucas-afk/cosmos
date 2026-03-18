@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { notes, users } from '@/lib/db/schema'
 import { auth } from '@/lib/auth/auth'
 import { checkAndExpireTrial } from '@/lib/trial'
+import { withRetry } from '@/lib/utils'
 import { format } from 'date-fns'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -32,11 +33,12 @@ export async function POST(
 
   // Rate limit: free users get 5 asks/day
   if (plan === 'free') {
-    const [user] = await db
+    const [user] = await withRetry(() => db
       .select({ dailyAskCount: users.dailyAskCount, lastAskDate: users.lastAskDate })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1)
+    )
 
     const now = new Date()
     const sameDay = user?.lastAskDate ? isSameDay(new Date(user.lastAskDate), now) : false
@@ -49,10 +51,10 @@ export async function POST(
       )
     }
 
-    await db.update(users).set({
+    await withRetry(() => db.update(users).set({
       dailyAskCount: count + 1,
       lastAskDate: now,
-    }).where(eq(users.id, userId))
+    }).where(eq(users.id, userId)))
   }
 
   const body = await req.json()
@@ -65,7 +67,7 @@ export async function POST(
   }
 
   // Load the specific note, verify ownership
-  const [note] = await db.select({
+  const [note] = await withRetry(() => db.select({
     id: notes.id,
     title: notes.title,
     polishedTranscript: notes.polishedTranscript,
@@ -74,7 +76,7 @@ export async function POST(
     createdAt: notes.createdAt,
   }).from(notes).where(
     and(eq(notes.id, noteId), eq(notes.userId, userId))
-  ).limit(1)
+  ).limit(1))
 
   if (!note) {
     return new Response(JSON.stringify({ error: 'Note not found' }), {
@@ -124,7 +126,12 @@ Answer the user's question using information from this note. Be concise and help
         }
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Stream error'
+        let msg = 'Something went wrong. Please try again.'
+        if (err instanceof Anthropic.APIError) {
+          if (err.status === 429) msg = 'AI is busy right now. Please try again in a moment.'
+          else if (err.status === 401 || err.status === 403) msg = 'AI service configuration error. Please contact support.'
+          else if (err.status === 500 || err.status === 529) msg = 'AI service is temporarily unavailable. Please try again shortly.'
+        }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`))
       } finally {
         controller.close()

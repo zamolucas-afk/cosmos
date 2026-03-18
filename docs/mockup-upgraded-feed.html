@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmos — Upgraded Notes Feed Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050508;
+    color: #f0f0ff;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+
+  /* Navbar */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(13,13,26,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(76,29,149,0.2);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .navbar-orb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #7c3aed, #4c1d95);
+    box-shadow: 0 0 12px #7c3aed88;
+  }
+  .navbar-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .plan-badge {
+    font-size: 11px;
+    color: #9090b0;
+    border: 1px solid rgba(76,29,149,0.4);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+  .nav-link {
+    font-size: 13px;
+    color: #9090b0;
+    text-decoration: none;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    padding: 14px 16px 0;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  .tab.active {
+    background: #7c3aed;
+    color: white;
+    box-shadow: 0 0 16px #7c3aed66;
+  }
+  .tab:not(.active) {
+    background: #14142a;
+    color: #9090b0;
+    border-color: rgba(76,29,149,0.3);
+  }
+  .tab .badge {
+    font-size: 9px;
+    background: #a855f7;
+    color: white;
+    padding: 1px 5px;
+    border-radius: 8px;
+    margin-left: 4px;
+    vertical-align: super;
+  }
+
+  /* Search */
+  .search-bar {
+    margin: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #0d0d1a;
+    border: 1px solid rgba(76,29,149,0.25);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  .search-bar svg { color: #50507a; flex-shrink: 0; }
+  .search-bar input {
+    background: none;
+    border: none;
+    outline: none;
+    color: #f0f0ff;
+    font-size: 14px;
+    width: 100%;
+  }
+  .search-bar input::placeholder { color: #50507a; }
+
+  /* Notes list */
+  .notes-list {
+    padding: 0 16px;
+  }
+
+  .note-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(76,29,149,0.12);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .note-card:hover {
+    background: rgba(20,20,42,0.5);
+    margin: 0 -16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border-bottom-color: transparent;
+  }
+
+  .note-emoji {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: #14142a;
+    border: 1px solid rgba(76,29,149,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .note-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .note-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: #f0f0ff;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .note-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #50507a;
+  }
+  .note-meta .time { color: #9090b0; }
+  .note-meta .duration {
+    color: #50507a;
+    font-family: 'Space Grotesk', monospace;
+  }
+  .note-meta .dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #50507a;
+  }
+
+  .note-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #7c3aed;
+    box-shadow: 0 0 6px #7c3aed88;
+  }
+  .menu-btn {
+    background: none;
+    border: none;
+    color: #50507a;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+
+  /* Favorite star */
+  .fav-star {
+    color: #eab308;
+    font-size: 12px;
+    margin-left: 4px;
+  }
+
+  /* FAB */
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 398px;
+    padding: 14px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    box-shadow: 0 0 30px #7c3aed66, 0 4px 20px rgba(0,0,0,0.4);
+    color: white;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .fab svg { width: 20px; height: 20px; }
+
+  /* Bottom padding for FAB */
+  .spacer { height: 80px; }
+
+  /* Label */
+  .mockup-label {
+    text-align: center;
+    padding: 20px 16px 8px;
+    font-size: 11px;
+    color: #50507a;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Cosmos — Upgraded Feed Mockup</div>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-left">
+    <div class="navbar-orb"></div>
+    <span class="navbar-title">Cosmos</span>
+  </div>
+  <div class="navbar-right">
+    <span class="plan-badge">Free 3/10</span>
+    <a class="nav-link" href="#">Account</a>
+    <a class="nav-link" href="#" style="color:#50507a">Sign out</a>
+  </div>
+</nav>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active">All</div>
+  <div class="tab">Meetings <span class="badge">NEW</span></div>
+  <div class="tab">Favorites</div>
+  <div class="tab">Folders</div>
+</div>
+
+<!-- Search -->
+<div class="search-bar">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+  <input placeholder="Search notes..." />
+</div>
+
+<!-- Notes List -->
+<div class="notes-list">
+
+  <div class="note-card">
+    <div class="note-emoji">🤖</div>
+    <div class="note-content">
+      <div class="note-title">AI-driven Planning Session</div>
+      <div class="note-meta">
+        <span class="time">2:38 PM</span>
+        <div class="dot"></div>
+        <span class="duration">26:02</span>
+      </div>
+    </div>
+    <div class="note-actions">
+      <div class="unread-dot"></div>
+      <button class="menu-btn">•••</button>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-emoji">💰</div>
+    <div class="note-content">
+      <div class="note-title">Refunds & Clearing Gains <span class="fav-star">★</span></div>
+      <div class="note-meta">
+        <span class="time">12:45 PM</span>
+        <div class="dot"></div>
+        <span class="duration">28:21</span>
+      </div>
+    </div>
+    <div class="note-actions">
+      <div class="unread-dot"></div>
+      <button class="menu-btn">•••</button>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-emoji">⚙️</div>
+    <div class="note-content">
+      <div class="note-title">ESR: Automating Payments</div>
+      <div class="note-meta">
+        <span class="time">12:05 PM</span>
+        <div class="dot"></div>
+        <span class="duration">21:43</span>
+      </div>
+    </div>
+    <div class="note-actions">
+      <button class="menu-btn">•••</button>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-emoji">🐯</div>
+    <div class="note-content">
+      <div class="note-title">S4HANA Go-Live Recap</div>
+      <div class="note-meta">
+        <span class="time">11:31 AM</span>
+        <div class="dot"></div>
+        <span class="duration">30:17</span>
+      </div>
+    </div>
+    <div class="note-actions">
+      <div class="unread-dot"></div>
+      <button class="menu-btn">•••</button>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-emoji">🧪</div>
+    <div class="note-content">
+      <div class="note-title">Cloud ALM & Test Automation</div>
+      <div class="note-meta">
+        <span class="time">10:36 AM</span>
+        <div class="dot"></div>
+        <span class="duration">26:41</span>
+      </div>
+    </div>
+    <div class="note-actions">
+      <button class="menu-btn">•••</button>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-emoji">💼</div>
+    <div class="note-content">
+      <div class="note-title">S4HANA Cost Center Apps</div>
+      <div class="note-meta">
+        <span class="time">9:58 AM</span>
+        <div class="dot"></div>
+        <span class="duration">30:46</span>
+      </div>
+    </div>
+    <div class="note-actions">
+      <button class="menu-btn">•••</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="spacer"></div>
+
+<!-- New Recording FAB -->
+<button class="fab">
+  <svg viewBox="0 0 24 24" fill="white">
+    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+  </svg>
+  New Recording
+</button>
+
+</body>
+</html>

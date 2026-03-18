@@ -90,7 +90,7 @@ export default function AccountView({ user, subscription, usedCount, trialEndsAt
             </div>
             <Link
               href="/pricing"
-              className="px-4 py-2 rounded bg-accent-violet text-white text-sm hover:bg-accent-light transition-colors"
+              className="px-4 py-2 rounded bg-accent-violet text-white text-sm hover:bg-accent-light transition-colors violet-glow"
               style={{ boxShadow: '0 0 16px #7c3aed44' }}
             >
               Subscribe now
@@ -104,7 +104,7 @@ export default function AccountView({ user, subscription, usedCount, trialEndsAt
             </div>
             <Link
               href="/pricing"
-              className="px-4 py-2 rounded bg-accent-violet text-white text-sm hover:bg-accent-light transition-colors"
+              className="px-4 py-2 rounded bg-accent-violet text-white text-sm hover:bg-accent-light transition-colors violet-glow"
               style={{ boxShadow: '0 0 16px #7c3aed44' }}
             >
               Upgrade

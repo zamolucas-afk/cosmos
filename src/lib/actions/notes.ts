@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { notes, users } from '@/lib/db/schema'
 import { eq, and, gte, count } from 'drizzle-orm'
 import { polishNote } from '@/lib/claude'
+import { withRetry } from '@/lib/utils'
 import { redirect } from 'next/navigation'
 
 function startOfMonth(): Date {
@@ -28,40 +29,79 @@ export async function saveNote(rawTranscript: string, duration: number): Promise
   const session = await auth()
   if (!session?.user?.id) throw new Error('Unauthenticated')
 
-  // Authoritative limit check — read plan directly from DB
-  const [user] = await db.select({ plan: users.plan, trialStartedAt: users.trialStartedAt })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1)
+  // Authoritative limit check — read plan directly from DB (with retry for Neon cold starts)
+  let user: { plan: string; trialStartedAt: Date | null } | undefined
+  try {
+    const [result] = await withRetry(() =>
+      db.select({ plan: users.plan, trialStartedAt: users.trialStartedAt })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1)
+    )
+    user = result
+  } catch (err) {
+    console.error('[saveNote] DB plan check failed:', err)
+    throw new Error('Could not verify your account. Please try again.')
+  }
   if (!user) throw new Error('User not found')
 
   if (user.plan === 'trial') {
     const trialStartedAt = user.trialStartedAt ?? new Date(0)
-    const count = await getTrialNoteCount(session.user.id, trialStartedAt)
-    if (count >= 20) throw new Error('Trial note limit reached. Upgrade to Pro for unlimited notes.')
+    const trialCount = await withRetry(() => getTrialNoteCount(session.user.id, trialStartedAt))
+    if (trialCount >= 20) throw new Error('Trial note limit reached. Upgrade to Pro for unlimited notes.')
   } else if (user.plan === 'free') {
-    const noteCount = await getMonthlyNoteCount(session.user.id)
+    const noteCount = await withRetry(() => getMonthlyNoteCount(session.user.id))
     if (noteCount >= 3) throw new Error('Monthly note limit reached. Upgrade to Pro for unlimited notes.')
   }
   // plan === 'pro': no limit
 
-  const { title, emoji, polished, summary, actionItems, keyDecisions, tags } = await polishNote(rawTranscript)
+  // Polish with Claude — fallback to raw transcript if AI fails
+  let title: string, emoji: string, polished: string, summary: string
+  let actionItems: { text: string; assignee?: string }[], keyDecisions: string[], tags: string[]
 
-  const [note] = await db.insert(notes).values({
-    userId: session.user.id,
-    title,
-    emoji,
-    rawTranscript,
-    polishedTranscript: polished,
-    summary,
-    actionItems,
-    keyDecisions,
-    tags,
-    duration,
-    viewed: false,
-  }).returning({ id: notes.id })
+  try {
+    const result = await polishNote(rawTranscript)
+    title = result.title
+    emoji = result.emoji
+    polished = result.polished
+    summary = result.summary
+    actionItems = result.actionItems
+    keyDecisions = result.keyDecisions
+    tags = result.tags
+  } catch (err) {
+    console.error('[saveNote] polishNote failed:', err)
+    // Save with fallback rather than losing the user's recording
+    title = 'Voice Note'
+    emoji = '📝'
+    polished = rawTranscript
+    summary = ''
+    actionItems = []
+    keyDecisions = []
+    tags = []
+  }
 
-  return { id: note.id }
+  try {
+    const [note] = await withRetry(() =>
+      db.insert(notes).values({
+        userId: session.user.id,
+        title,
+        emoji,
+        rawTranscript,
+        polishedTranscript: polished,
+        summary,
+        actionItems,
+        keyDecisions,
+        tags,
+        duration,
+        viewed: false,
+      }).returning({ id: notes.id })
+    )
+
+    return { id: note.id }
+  } catch (err) {
+    console.error('[saveNote] DB insert failed:', err)
+    throw new Error('Failed to save note. Please try again.')
+  }
 }
 
 export async function deleteNote(id: string): Promise<void> {
@@ -100,4 +140,56 @@ export async function markViewed(noteId: string): Promise<void> {
       eq(notes.userId, session.user.id),
       eq(notes.viewed, false),
     ))
+}
+
+export async function repolishNote(noteId: string): Promise<{ success: boolean; error?: string }> {
+  const session = await auth()
+  if (!session?.user?.id) return { success: false, error: 'Unauthenticated' }
+
+  const [note] = await db.select({ id: notes.id, rawTranscript: notes.rawTranscript })
+    .from(notes)
+    .where(and(eq(notes.id, noteId), eq(notes.userId, session.user.id)))
+    .limit(1)
+
+  if (!note) return { success: false, error: 'Note not found' }
+
+  try {
+    const { title, emoji, polished, summary, actionItems, keyDecisions, tags } = await polishNote(note.rawTranscript)
+
+    await db.update(notes).set({
+      title,
+      emoji,
+      polishedTranscript: polished,
+      summary,
+      actionItems,
+      keyDecisions,
+      tags,
+      updatedAt: new Date(),
+    }).where(eq(notes.id, noteId))
+
+    return { success: true }
+  } catch {
+    return { success: false, error: 'AI processing failed. Please try again.' }
+  }
+}
+
+export async function renameNote(noteId: string, newTitle: string): Promise<{ success: boolean; error?: string }> {
+  const session = await auth()
+  if (!session?.user?.id) return { success: false, error: 'Unauthenticated' }
+
+  const trimmed = newTitle.trim()
+  if (!trimmed || trimmed.length > 200) return { success: false, error: 'Title must be 1-200 characters' }
+
+  try {
+    const result = await withRetry(() =>
+      db.update(notes)
+        .set({ title: trimmed, updatedAt: new Date() })
+        .where(and(eq(notes.id, noteId), eq(notes.userId, session.user.id)))
+        .returning({ id: notes.id })
+    )
+    if (result.length === 0) return { success: false, error: 'Note not found' }
+    return { success: true }
+  } catch {
+    return { success: false, error: 'Failed to rename. Please try again.' }
+  }
 }

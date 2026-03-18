@@ -1,18 +1,21 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { startTransition } from 'react'
 import { formatDuration, cn } from '@/lib/utils'
 import { toggleFavorite, deleteNote } from '@/lib/actions/notes'
+import { shareNote } from '@/lib/share'
 import NoteMenu from '@/components/NoteMenu'
 import TagPill from '@/components/TagPill'
 import type { Note } from '@/lib/db/schema'
 
 export default function NoteCard({ note }: { note: Note }) {
-  const excerpt = note.polishedTranscript.length > 120
-    ? note.polishedTranscript.slice(0, 120) + '…'
-    : note.polishedTranscript
+  const router = useRouter()
+  // Prefer summary over raw transcript for a cleaner excerpt
+  const source = note.summary || note.polishedTranscript
+  const excerpt = source.length > 120 ? source.slice(0, 120) + '…' : source
 
   const createdAt = new Date(note.createdAt)
   const timeLabel = format(createdAt, 'h:mm a')
@@ -28,6 +31,14 @@ export default function NoteCard({ note }: { note: Note }) {
     startTransition(() => {
       deleteNote(note.id)
     })
+  }
+
+  function handleShare() {
+    shareNote(note as Parameters<typeof shareNote>[0])
+  }
+
+  function handleRename() {
+    router.push(`/notes/${note.id}?rename=true`)
   }
 
   return (
@@ -70,6 +81,8 @@ export default function NoteCard({ note }: { note: Note }) {
                 isFavorite={note.isFavorite}
                 onFavorite={handleFavorite}
                 onDelete={handleDelete}
+                onShare={handleShare}
+                onRename={handleRename}
               />
             </div>
           </div>

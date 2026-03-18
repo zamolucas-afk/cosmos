@@ -301,6 +301,32 @@ All 25 tasks implemented, 25 tests passing, production build verified.
 
 3. **RecordingOrb animation conflict** — `src/components/RecordingOrb.tsx`: Removed `transition-transform hover:scale-105 active:scale-95` Tailwind classes that conflicted with the CSS `orb-idle` animation transform, making the button unresponsive to clicks.
 
+4. **Neon cold-start failures across all pages** — Added `withRetry()` utility in `src/lib/utils.ts` (2 retries by default) and wrapped all Neon DB queries in server pages (`page.tsx`, `account/page.tsx`, `pricing/page.tsx`) and `checkAndExpireTrial`. Navbar catches errors silently to avoid crashing the page. Register action has inline retry for duplicate-email check.
+
+5. **RecordingOrb stuck in "thinking" state on saveNote error** — `src/components/RecordingScreen.tsx`: After a `saveNote` failure, the orb stayed in "thinking" state with no way to retry. Fix: call `reset()` from `useRecorder` to return orb to idle on error. Also handles empty transcripts — if the user stops recording with no speech captured, shows an error message and resets instead of sending an empty transcript to Claude.
+
+### Bug Fixes (2026-03-18 QA Session)
+
+6. **Raw SQL errors leaking to users** — `saveNote` in `src/lib/actions/notes.ts`: DB insert errors exposed full SQL queries to the user. Fix: wrapped plan-check query and DB insert in separate try/catch blocks with clean user-facing error messages. Also wrapped `polishNote` call — if Claude API fails, note saves with fallback data (title: "Voice Note") instead of crashing.
+
+7. **Neon cold-start retry had no delay** — `withRetry()` in `src/lib/utils.ts`: Retries fired instantly (0ms), hitting the same sleeping Neon compute. Fix: added exponential backoff (1s → 2s → 4s), increased retries from 2 to 3.
+
+8. **Speech Recognition dying on long recordings** — `src/hooks/useRecorder.ts`: "Recognition error: network" crashed recording. Fix: auto-restart recognition on `network`/`aborted` errors (300ms delay). Added `onend` handler that auto-restarts if still in recording state (browser kills recognition after ~60s silence). Added `stateRef` for synchronous state access in callbacks.
+
+9. **Error message sanitizer** — `src/components/RecordingScreen.tsx`: Added safety check that detects SQL keywords in error messages and replaces with clean "Failed to save note" message.
+
+10. **`keyDecisions` crash: "Objects are not valid as React child"** — `src/components/InsightsView.tsx`: Claude returns `keyDecisions` as `[{text: "..."}]` (objects) but component expected `string[]`. Fix: normalize `keyDecisions` — extract `.text` from objects, pass through strings.
+
+11. **Ask Your Notes 500 errors (both routes)** — `src/app/api/ask/[noteId]/route.ts` and `src/app/api/ask/route.ts`: All DB queries had no retry for Neon cold starts. Fix: wrapped all 7 DB queries across both routes with `withRetry()`.
+
+12. **Note detail page crash on cold start** — `src/app/notes/[id]/page.tsx`: DB query to fetch note had no retry. Fix: wrapped with `withRetry()`.
+
+13. **`repolishNote` server action** — `src/lib/actions/notes.ts`: Added action to re-process existing notes through Claude. Used by "Generate AI Insights" / "Regenerate insights" buttons in InsightsView.
+
+14. **`renameNote` server action** — `src/lib/actions/notes.ts`: Added action to rename notes with validation (1-200 chars) and retry.
+
+15. **Privacy Policy & Terms of Use** — `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`: Full legal pages covering POPIA compliance, AI disclaimer, no audio storage, PayFast billing, data rights. Linked from Settings → About.
+
 ### V2 — Upgrade (In Progress)
 
 **Vision**: Transform Cosmos from a voice recorder into an intelligent personal knowledge base. *"Summary takes notes. Cosmos thinks for you."*
@@ -309,25 +335,31 @@ All 25 tasks implemented, 25 tests passing, production build verified.
 - **Ask Your Notes** — cross-note AI chat that searches entire history (Summary only does per-note chat)
 - **AI Auto-Tags + Smart Collections** — automatic organization via Claude-generated tags, no manual folders
 
-**Full feature set (priority order):**
-1. AI Insights per note (summary, action items, key decisions, emoji, tags)
-2. Ask Your Notes — cross-note AI chat with citations
-3. AI Auto-Tags + Smart Collections
-4. Richer NoteCards (emoji, time, duration, unread dot, ••• menu)
-5. Note detail tabbed view (Summary | Transcript | Ask)
-6. Category tabs (All, Meetings, Favorites, Collections)
-7. Favorites system
-8. Share/Copy
-9. Full-width "New Note" CTA
-10. Language rename: "recording" → "note" everywhere
+**V2 features implemented:**
+- ✅ AI Insights per note (summary, action items, key decisions, emoji, tags)
+- ✅ Ask Your Notes — per-note AI chat with SSE streaming
+- ✅ Ask Your Notes — global cross-note AI chat with full-text search + citations
+- ✅ AI Auto-Tags + Smart Collections (tag pills, collections tab)
+- ✅ Richer NoteCards (emoji, time, duration, unread dot, ••• menu)
+- ✅ Note detail tabbed view (Summary | Transcript | Ask)
+- ✅ Category tabs (All, Meetings, Favorites, Collections)
+- ✅ Favorites system (toggle, filter)
+- ✅ Share/Copy/Print/Export buttons
+- ✅ Full-width "New Note" CTA
+- ✅ Language rename: "recording" → "note"
+- ✅ Re-polish/regenerate insights for existing notes
+- ✅ Note rename (inline edit)
+- ✅ Settings page with theme toggle, transcript settings
+- ✅ Privacy Policy & Terms of Use pages
+- ✅ Cloud (light) theme + Deep Space (dark) theme
 
 **V2 Spec**: `docs/superpowers/specs/2026-03-17-cosmos-v2-upgrade-design.md`
 
 ### Next steps
 1. Set up PayFast sandbox credentials
 2. Test PayFast sandbox end-to-end (ngrok for ITN delivery)
-3. Implement V2 features
-4. Deploy to Netlify
+3. Deploy to Netlify
+4. Consider Neon paid plan ($19/mo) for "Always On" compute (eliminates cold starts)
 
 ---
 

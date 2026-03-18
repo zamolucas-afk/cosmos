@@ -2,10 +2,20 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import NoteCard from '../NoteCard'
 
+// Mock next/navigation — required for useRouter in NoteCard
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}))
+
 // Mock server actions — they run in Node.js server context, not jsdom
 vi.mock('@/lib/actions/notes', () => ({
   toggleFavorite: vi.fn(),
   deleteNote: vi.fn(),
+}))
+
+// Mock share utility
+vi.mock('@/lib/share', () => ({
+  shareNote: vi.fn().mockResolvedValue('copied'),
 }))
 
 const note = {

@@ -72,7 +72,10 @@ export default function RecordingScreen() {
         router.push(`/notes/${id}`)
       } catch (e: any) {
         reset()
-        setSaveError(e.message || 'Failed to save. Please try again.')
+        const msg = e.message || ''
+        // Never show raw SQL or technical details to the user
+        const isSafe = msg && !msg.includes('select ') && !msg.includes('insert ') && !msg.includes('Failed query') && msg.length < 200
+        setSaveError(isSafe ? msg : 'Failed to save note. Please try again.')
       }
     }
   }, [state, start, stop, reset, router])
