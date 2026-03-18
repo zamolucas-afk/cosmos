@@ -21,11 +21,11 @@ export default function RecordingOrb({
           flex items-center justify-center${!isRecording && !isThinking ? ' recording-orb-idle' : ''}`}
         style={{
           background: isRecording
-            ? 'radial-gradient(circle, #a855f7, #7c3aed)'
-            : 'radial-gradient(circle, #7c3aed, #4c1d95)',
+            ? 'radial-gradient(circle at 35% 35%, #d8b4fe, #a855f7 40%, #7c3aed 70%, #4c1d95)'
+            : 'radial-gradient(circle at 35% 35%, #c084fc, #7c3aed 50%, #4c1d95 80%, #2e1065)',
           boxShadow: isRecording
-            ? '0 0 60px #a855f7aa, 0 0 120px #7c3aed66'
-            : '0 0 40px #7c3aed88, 0 0 80px #7c3aed44',
+            ? '0 0 60px #a855f7aa, 0 0 120px #7c3aed66, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(216,180,254,0.3)'
+            : '0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(192,132,252,0.3)',
           animation: isThinking
             ? 'none'
             : isRecording
@@ -57,12 +57,12 @@ export default function RecordingOrb({
 
       <style>{`
         @keyframes orb-idle {
-          0%,100% { transform: scale(1); box-shadow: 0 0 40px #7c3aed88, 0 0 80px #7c3aed44; }
-          50% { transform: scale(1.05); box-shadow: 0 0 50px #7c3aed99, 0 0 100px #7c3aed55; }
+          0%,100% { transform: scale(1); box-shadow: 0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(192,132,252,0.3); }
+          50% { transform: scale(1.05); box-shadow: 0 0 50px #a855f7aa, 0 0 100px #7c3aed55, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(192,132,252,0.4); }
         }
         @keyframes orb-record {
-          0%,100% { transform: scale(1); box-shadow: 0 0 60px #a855f7aa, 0 0 120px #7c3aed66; }
-          50% { transform: scale(1.12); box-shadow: 0 0 80px #a855f7cc, 0 0 160px #7c3aed88; }
+          0%,100% { transform: scale(1); box-shadow: 0 0 60px #a855f7aa, 0 0 120px #7c3aed66, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(216,180,254,0.3); }
+          50% { transform: scale(1.12); box-shadow: 0 0 80px #a855f7cc, 0 0 160px #7c3aed88, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(216,180,254,0.4); }
         }
         @keyframes spin {
           from { transform: rotate(0deg); }

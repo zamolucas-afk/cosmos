@@ -10,11 +10,23 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="inline-block w-12 h-12 rounded-full bg-accent-violet mb-4 violet-glow"
-            style={{ boxShadow: '0 0 32px #7c3aed88' }} />
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div
+            className="w-16 h-16 rounded-full mb-4"
+            style={{
+              background: 'radial-gradient(circle at 35% 35%, #c084fc, #7c3aed 50%, #4c1d95 80%, #2e1065)',
+              boxShadow: '0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -4px 12px rgba(0,0,0,0.4), inset 0 4px 8px rgba(192,132,252,0.3)',
+              animation: 'register-orb-pulse 3s ease-in-out infinite',
+            }}
+          />
           <h1 className="text-2xl font-heading text-text-primary">Create account</h1>
           <p className="text-text-secondary text-sm mt-1">Start taking voice notes</p>
+          <style>{`
+            @keyframes register-orb-pulse {
+              0%, 100% { transform: scale(1); box-shadow: 0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -4px 12px rgba(0,0,0,0.4), inset 0 4px 8px rgba(192,132,252,0.3); }
+              50% { transform: scale(1.06); box-shadow: 0 0 50px #a855f7aa, 0 0 100px #7c3aed55, inset 0 -4px 12px rgba(0,0,0,0.4), inset 0 4px 8px rgba(192,132,252,0.4); }
+            }
+          `}</style>
         </div>
 
         <form action={action}

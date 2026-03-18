@@ -64,8 +64,8 @@ export default function NotesFeed({ notes, collections = [] }: { notes: Note[]; 
               href="/record"
               className="relative mb-6 w-24 h-24 rounded-full flex items-center justify-center cursor-pointer"
               style={{
-                background: 'radial-gradient(circle, #7c3aed, #4c1d95)',
-                boxShadow: '0 0 40px #7c3aed88, 0 0 80px #7c3aed44',
+                background: 'radial-gradient(circle at 35% 35%, #c084fc, #7c3aed 50%, #4c1d95 80%, #2e1065)',
+                boxShadow: '0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(192,132,252,0.3)',
                 animation: 'landing-orb-pulse 3s ease-in-out infinite',
               }}
             >
@@ -87,11 +87,11 @@ export default function NotesFeed({ notes, collections = [] }: { notes: Note[]; 
               @keyframes landing-orb-pulse {
                 0%, 100% {
                   transform: scale(1);
-                  box-shadow: 0 0 40px #7c3aed88, 0 0 80px #7c3aed44;
+                  box-shadow: 0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(192,132,252,0.3);
                 }
                 50% {
                   transform: scale(1.08);
-                  box-shadow: 0 0 60px #a855f7aa, 0 0 120px #7c3aed66;
+                  box-shadow: 0 0 60px #a855f7aa, 0 0 120px #7c3aed66, inset 0 -6px 16px rgba(0,0,0,0.4), inset 0 6px 10px rgba(192,132,252,0.4);
                 }
               }
             `}</style>
