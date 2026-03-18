@@ -59,20 +59,42 @@ export default function NotesFeed({ notes, collections = [] }: { notes: Note[]; 
             </div>
           )
         ) : tabFiltered.length === 0 ? (
-          <div className="text-center py-20 px-4">
-            <Link href="/record" className="block mx-auto mb-4 w-16 h-16 rounded-full bg-accent-dim/30 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-              <div className="w-8 h-8 rounded-full bg-accent-violet/60 violet-glow"
-                style={{ boxShadow: '0 0 20px #7c3aed66' }} />
+          <div className="text-center py-20 px-4 flex flex-col items-center">
+            <Link
+              href="/record"
+              className="relative mb-6 w-24 h-24 rounded-full flex items-center justify-center cursor-pointer"
+              style={{
+                background: 'radial-gradient(circle, #7c3aed, #4c1d95)',
+                boxShadow: '0 0 40px #7c3aed88, 0 0 80px #7c3aed44',
+                animation: 'landing-orb-pulse 3s ease-in-out infinite',
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="white" opacity={0.9}>
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+              </svg>
             </Link>
             <p className="text-text-secondary text-sm">
               {notes.length === 0
-                ? 'No notes yet. Tap the orb to begin.'
+                ? 'Nothing recorded yet. Tap the orb to begin.'
                 : activeTab === 'Favorites'
                 ? 'No favourites yet. Star a note to see it here.'
                 : activeTab === 'Meetings'
                 ? 'No meeting notes found.'
                 : 'No notes match your search.'}
             </p>
+            <style>{`
+              @keyframes landing-orb-pulse {
+                0%, 100% {
+                  transform: scale(1);
+                  box-shadow: 0 0 40px #7c3aed88, 0 0 80px #7c3aed44;
+                }
+                50% {
+                  transform: scale(1.08);
+                  box-shadow: 0 0 60px #a855f7aa, 0 0 120px #7c3aed66;
+                }
+              }
+            `}</style>
           </div>
         ) : (
           <div className="flex flex-col gap-3 px-4">
