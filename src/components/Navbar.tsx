@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { Settings } from 'lucide-react'
 import { auth } from '@/lib/auth/auth'
-import { signOutAction } from '@/lib/actions/auth'
 import { db } from '@/lib/db'
 import { notes, users } from '@/lib/db/schema'
 import { eq, and, gte, count } from 'drizzle-orm'
@@ -94,22 +93,8 @@ export default async function Navbar() {
             className="text-text-secondary hover:text-text-primary transition-colors"
             aria-label="Settings"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-5 h-5" />
           </Link>
-          <Link
-            href="/account"
-            className="text-text-secondary hover:text-text-primary text-sm transition-colors"
-          >
-            Account
-          </Link>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="text-text-muted hover:text-error text-sm transition-colors"
-            >
-              Sign out
-            </button>
-          </form>
         </div>
       </div>
     </nav>

@@ -3,8 +3,9 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { User, Globe, Info, Shield, FileText } from 'lucide-react'
+import { User, Globe, Info, Shield, FileText, CreditCard, LogOut } from 'lucide-react'
 import { updateProfile } from '@/lib/actions/settings'
+import { signOutAction } from '@/lib/actions/auth'
 import { useTheme } from '@/components/ThemeProvider'
 
 export default function SettingsView({ name, email, plan }: { name: string; email: string; plan: string }) {
@@ -144,8 +145,31 @@ export default function SettingsView({ name, email, plan }: { name: string; emai
         </div>
       </section>
 
+      {/* Account & Sign Out */}
+      <section className="mb-8">
+        <h2 className="text-sm font-heading font-semibold text-text-muted uppercase tracking-wider mb-4">Account</h2>
+        <div className="bg-surface rounded-2xl border border-accent-dim/20 overflow-hidden">
+          <Link href="/account" className="flex items-center gap-3 p-4 border-b border-accent-dim/10 hover:bg-surface-raised/50 transition-colors">
+            <CreditCard className="w-5 h-5 text-accent-light" />
+            <div>
+              <p className="text-text-primary text-sm">Subscription & Billing</p>
+              <p className="text-xs text-text-muted">{plan.charAt(0).toUpperCase() + plan.slice(1)} plan</p>
+            </div>
+          </Link>
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="flex items-center gap-3 p-4 w-full text-left hover:bg-surface-raised/50 transition-colors"
+            >
+              <LogOut className="w-5 h-5 text-error/70" />
+              <p className="text-error/90 text-sm">Sign out</p>
+            </button>
+          </form>
+        </div>
+      </section>
+
       <p className="text-center text-text-muted text-xs mt-12">
-        Plan: {plan.charAt(0).toUpperCase() + plan.slice(1)} · Made with 💜 in South Africa
+        Made with 💜 in South Africa
       </p>
     </main>
   )
