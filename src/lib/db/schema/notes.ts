@@ -15,6 +15,7 @@ export const notes = pgTable('notes', {
   duration:           integer('duration').notNull(),
   isFavorite:         boolean('is_favorite').default(false).notNull(),
   viewed:             boolean('viewed').default(false).notNull(),
+  shareToken:         text('share_token').unique(),
   updatedAt:          timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt:          timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({

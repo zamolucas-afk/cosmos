@@ -12,7 +12,7 @@ export default async function SettingsPage() {
   if (!session?.user) redirect('/login')
 
   const [user] = await withRetry(() =>
-    db.select({ name: users.name, email: users.email, plan: users.plan })
+    db.select({ name: users.name, email: users.email, plan: users.plan, digestEnabled: users.digestEnabled })
       .from(users)
       .where(eq(users.id, session.user.id))
       .limit(1)
@@ -23,7 +23,7 @@ export default async function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <SettingsView name={user.name} email={user.email} plan={user.plan} />
+      <SettingsView name={user.name} email={user.email} plan={user.plan} digestEnabled={user.digestEnabled} />
     </div>
   )
 }

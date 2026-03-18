@@ -10,6 +10,7 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname.startsWith(p)
       ) || nextUrl.pathname.startsWith('/api/auth')
         || nextUrl.pathname.startsWith('/api/payfast')
+        || nextUrl.pathname.startsWith('/share')
       if (isPublic) return true
       return isLoggedIn
     },

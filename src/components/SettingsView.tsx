@@ -3,12 +3,12 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { User, Globe, Info, Shield, FileText, CreditCard, LogOut } from 'lucide-react'
-import { updateProfile } from '@/lib/actions/settings'
+import { User, Globe, Info, Shield, FileText, CreditCard, LogOut, Mail } from 'lucide-react'
+import { updateProfile, toggleDigest } from '@/lib/actions/settings'
 import { signOutAction } from '@/lib/actions/auth'
 import { useTheme } from '@/components/ThemeProvider'
 
-export default function SettingsView({ name, email, plan }: { name: string; email: string; plan: string }) {
+export default function SettingsView({ name, email, plan, digestEnabled }: { name: string; email: string; plan: string; digestEnabled: boolean }) {
   const router = useRouter()
   const [editName, setEditName] = useState(name)
   const [isEditing, setIsEditing] = useState(false)
@@ -16,6 +16,7 @@ export default function SettingsView({ name, email, plan }: { name: string; emai
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const { theme, toggleTheme } = useTheme()
+  const [digestOn, setDigestOn] = useState(digestEnabled)
 
   function handleSave() {
     if (editName.trim() === name) {
@@ -103,7 +104,7 @@ export default function SettingsView({ name, email, plan }: { name: string; emai
             </div>
             <span className="text-text-muted text-xs">en-ZA</span>
           </div>
-          <div className="flex items-center justify-between p-4">
+          <div className="flex items-center justify-between p-4 border-b border-accent-dim/10">
             <div className="flex items-center gap-3">
               <Info className="w-5 h-5 text-accent-light" />
               <div>
@@ -118,6 +119,35 @@ export default function SettingsView({ name, email, plan }: { name: string; emai
               className="px-3 py-1.5 rounded-lg bg-surface-raised text-text-secondary text-xs font-heading hover:text-text-primary transition-colors"
             >
               {theme === 'deep-space' ? '\u2600\uFE0F Cloud' : '\uD83C\uDF19 Deep Space'}
+            </button>
+          </div>
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <Mail className="w-5 h-5 text-accent-light" />
+              <div>
+                <p className="text-text-primary text-sm">Weekly Digest</p>
+                <p className="text-xs text-text-muted">
+                  {digestOn ? 'AI summary of your notes every week' : 'Disabled'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                startTransition(async () => {
+                  const result = await toggleDigest()
+                  if (result.success && result.enabled !== undefined) {
+                    setDigestOn(result.enabled)
+                  }
+                })
+              }}
+              disabled={isPending}
+              className={`px-3 py-1.5 rounded-lg text-xs font-heading transition-colors ${
+                digestOn
+                  ? 'bg-accent-violet/20 text-accent-light hover:bg-accent-violet/30'
+                  : 'bg-surface-raised text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {digestOn ? 'On' : 'Off'}
             </button>
           </div>
         </div>

@@ -193,3 +193,39 @@ export async function renameNote(noteId: string, newTitle: string): Promise<{ su
     return { success: false, error: 'Failed to rename. Please try again.' }
   }
 }
+
+export async function generateShareLink(noteId: string): Promise<{ url: string } | { error: string }> {
+  const session = await auth()
+  if (!session?.user?.id) return { error: 'Unauthenticated' }
+
+  const [note] = await withRetry(() =>
+    db.select({ id: notes.id, shareToken: notes.shareToken })
+      .from(notes)
+      .where(and(eq(notes.id, noteId), eq(notes.userId, session.user.id)))
+      .limit(1)
+  )
+  if (!note) return { error: 'Note not found' }
+
+  if (note.shareToken) {
+    return { url: `${process.env.NEXT_PUBLIC_APP_URL}/share/${note.shareToken}` }
+  }
+
+  const token = crypto.randomUUID()
+  await withRetry(() =>
+    db.update(notes)
+      .set({ shareToken: token, updatedAt: new Date() })
+      .where(eq(notes.id, noteId))
+  )
+  return { url: `${process.env.NEXT_PUBLIC_APP_URL}/share/${token}` }
+}
+
+export async function revokeShareLink(noteId: string): Promise<{ success: boolean }> {
+  const session = await auth()
+  if (!session?.user?.id) return { success: false }
+  await withRetry(() =>
+    db.update(notes)
+      .set({ shareToken: null, updatedAt: new Date() })
+      .where(and(eq(notes.id, noteId), eq(notes.userId, session.user.id)))
+  )
+  return { success: true }
+}

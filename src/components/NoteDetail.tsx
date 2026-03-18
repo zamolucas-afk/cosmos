@@ -4,8 +4,8 @@ import { useState, useTransition, useOptimistic, useRef, useEffect } from 'react
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
-import { Copy, Trash2, ArrowLeft, Check, Heart, Pencil, Share2, Printer, FileDown } from 'lucide-react'
-import { deleteNote, toggleFavorite, renameNote } from '@/lib/actions/notes'
+import { Copy, Trash2, ArrowLeft, Check, Heart, Pencil, Share2, Printer, FileDown, Link2 } from 'lucide-react'
+import { deleteNote, toggleFavorite, renameNote, generateShareLink, revokeShareLink } from '@/lib/actions/notes'
 import { shareNote } from '@/lib/share'
 import { formatDuration } from '@/lib/utils'
 import NoteDetailTabs from './NoteDetailTabs'
@@ -49,6 +49,9 @@ export default function NoteDetail({ note }: { note: Note }) {
   const [isRenaming, setIsRenaming] = useState(false)
   const [editTitle, setEditTitle] = useState(note.title)
   const [shareStatus, setShareStatus] = useState<null | 'shared' | 'copied'>(null)
+  const [linkStatus, setLinkStatus] = useState<'idle' | 'loading' | 'copied' | 'active'>(
+    note.shareToken ? 'active' : 'idle'
+  )
   const renameInputRef = useRef<HTMLInputElement>(null)
 
   // Auto-enter rename mode if ?rename=true in URL
@@ -95,6 +98,24 @@ export default function NoteDetail({ note }: { note: Note }) {
     } else if (e.key === 'Escape') {
       handleCancelRename()
     }
+  }
+
+  async function handleGetLink() {
+    setLinkStatus('loading')
+    const result = await generateShareLink(note.id)
+    if ('url' in result) {
+      await navigator.clipboard.writeText(result.url)
+      setLinkStatus('copied')
+      setTimeout(() => setLinkStatus('active'), 2000)
+    } else {
+      setLinkStatus('idle')
+    }
+  }
+
+  async function handleRevokeLink() {
+    await revokeShareLink(note.id)
+    setLinkStatus('idle')
+    router.refresh()
   }
 
   async function handleShare() {
@@ -190,6 +211,34 @@ export default function NoteDetail({ note }: { note: Note }) {
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-3 pt-6 mt-6 border-t border-accent-dim/20 no-print">
+          <button
+            onClick={handleGetLink}
+            disabled={linkStatus === 'loading'}
+            className="flex items-center gap-2 px-4 py-2 rounded bg-surface hover:bg-surface-raised
+              text-text-secondary hover:text-text-primary text-sm transition-colors border border-accent-dim/30
+              disabled:opacity-50"
+          >
+            {linkStatus === 'copied' ? (
+              <><Check className="w-4 h-4 text-success" />Link copied!</>
+            ) : linkStatus === 'active' ? (
+              <><Link2 className="w-4 h-4 text-accent-light" />Copy link</>
+            ) : linkStatus === 'loading' ? (
+              <><Link2 className="w-4 h-4 animate-pulse" />Getting link...</>
+            ) : (
+              <><Link2 className="w-4 h-4" />Get link</>
+            )}
+          </button>
+
+          {linkStatus === 'active' && (
+            <button
+              onClick={handleRevokeLink}
+              className="flex items-center gap-2 px-3 py-2 rounded bg-surface hover:bg-surface-raised
+                text-text-muted hover:text-error text-xs transition-colors border border-accent-dim/30"
+            >
+              Revoke link
+            </button>
+          )}
+
           <button
             onClick={handleShare}
             className="flex items-center gap-2 px-4 py-2 rounded bg-surface hover:bg-surface-raised
