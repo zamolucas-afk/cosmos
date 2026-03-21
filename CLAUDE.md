@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Cosmos is a standalone AI-powered voice note taker app. Users record voice notes via the Web Speech API, Claude polishes the transcript and generates a title, and notes are stored in Neon Postgres. Freemium model: 10 recordings/month free, R99/month Pro via PayFast.
+Cosmos is a standalone AI-powered voice note taker app (PWA). Users record voice notes via the Web Speech API, Claude polishes the transcript and generates a title + AI insights, and notes are stored in Neon Postgres. Freemium model: trial → free → R149/month Pro via PayFast. Deployed at https://cosmosainotetaker.netlify.app.
 
 ---
 
@@ -24,6 +24,8 @@ Cosmos is a standalone AI-powered voice note taker app. Users record voice notes
 - **`clsx` + `tailwind-merge`** — conditional class utilities (`cn()` in `src/lib/utils.ts`)
 - **Vitest v4 + React Testing Library** — test runner
 - **Netlify** — hosting via `@netlify/plugin-nextjs` v5
+- **Resend** — transactional email for weekly AI digest
+- **PWA** — `manifest.json` + service worker for installable mobile experience
 
 ---
 
@@ -119,16 +121,22 @@ src/
     pricing/page.tsx            # Pricing page (server — Free vs Pro cards)
     record/page.tsx             # Recording page (server — pre-flight limit check)
     notes/[id]/page.tsx         # Note detail (server — fetches + ownership check)
+    share/[token]/page.tsx      # Public shared note view (no auth required)
+    settings/page.tsx           # Settings page (server — theme, digest, about)
+    privacy/page.tsx            # Privacy Policy (POPIA compliant)
+    terms/page.tsx              # Terms of Use
     api/
       auth/[...nextauth]/route.ts       # Auth.js route handler
       ask/route.ts                      # Global Ask Your Notes — SSE streaming
       ask/[noteId]/route.ts             # Per-note Ask — SSE streaming
       collections/[tag]/summary/route.ts # Collection AI summary generation
+      digest/route.ts                   # Weekly AI digest email (CRON_SECRET protected)
+      warmup/route.ts                   # DB keepalive endpoint (prevents Neon cold starts)
       payfast/notify/route.ts           # PayFast ITN webhook
       payfast/__tests__/notify.test.ts
     collections/[tag]/page.tsx  # Collection detail (server — tag-filtered notes)
     page.tsx                    # Home — notes feed (server component)
-    layout.tsx                  # Root layout (fonts, html/body)
+    layout.tsx                  # Root layout (fonts, html/body, PWA meta)
     globals.css                 # Tailwind v4 @theme tokens
   components/
     Navbar.tsx              # Async server component — trial/free/pro badge, sign out
@@ -147,6 +155,10 @@ src/
     Waveform.tsx            # Audio amplitude bars (client, requestAnimationFrame)
     RecordingOrb.tsx        # Tap-to-record orb — idle/recording/thinking states
     RecordingScreen.tsx     # Full recording UI (client) — includes FallbackTextInput
+    SharedNoteView.tsx      # Read-only public note view (shared links)
+    ServiceWorkerRegistration.tsx # PWA service worker registration (client)
+    DbWarmer.tsx            # Client-side DB keepalive on app load
+    SettingsView.tsx        # Settings — theme toggle, digest toggle, about links
     PricingCard.tsx         # Trial/Free/Pro pricing cards (client)
     AccountView.tsx         # Account/billing view — trial countdown (client)
     __tests__/NoteCard.test.tsx
@@ -158,7 +170,8 @@ src/
       auth.config.ts        # Edge-safe config subset (middleware)
     actions/
       auth.ts               # registerAction (sets trial plan), loginAction, signOutAction
-      notes.ts              # saveNote (insights + limits), deleteNote, toggleFavorite, markViewed, getMonthlyNoteCount
+      notes.ts              # saveNote (insights + limits), deleteNote, toggleFavorite, markViewed, repolishNote, renameNote, generateShareLink, revokeShareLink
+      settings.ts           # toggleTheme, toggleDigest
       subscription.ts       # initiateSubscription (R149), cancelSubscription
       __tests__/auth.test.ts
       __tests__/notes.test.ts
@@ -173,12 +186,16 @@ src/
         auth-tables.ts
         index.ts            # re-exports all
       __tests__/schema.test.ts
+    email/
+      send.ts               # Resend SDK wrapper
+      digest-ai.ts          # Claude-powered weekly digest generation
+      digest-template.ts    # Dark-themed HTML email template
     validation/
       insights.ts           # Zod schemas: InsightsSchema, ActionItemSchema
     trial.ts                # checkAndExpireTrial helper
     claude.ts               # polishNote — returns title, emoji, polished, summary, actionItems, keyDecisions, tags
     payfast.ts              # generateSignature, verifyItnSignature, buildApiHeaders, getPayFastUrl
-    utils.ts                # cn(), formatDuration()
+    utils.ts                # cn(), formatDuration(), withRetry() (exponential backoff for Neon cold starts)
     __tests__/payfast.test.ts
     __tests__/claude.test.ts
   middleware.ts             # Route protection (edge-safe, imports only auth.config.ts)
@@ -195,8 +212,8 @@ CLAUDE.md
 
 | Table | Purpose |
 |---|---|
-| `users` | id, name, email, password_hash, plan ('free'/'trial'/'pro'), trial_started_at, trial_ends_at, daily_ask_count, last_ask_date, created_at |
-| `notes` | id, user_id, title, emoji, raw_transcript, polished_transcript, summary, action_items (jsonb), key_decisions (jsonb), tags (text[]), duration, is_favorite, viewed, created_at, updated_at |
+| `users` | id, name, email, password_hash, plan ('free'/'trial'/'pro'), trial_started_at, trial_ends_at, daily_ask_count, last_ask_date, digest_enabled (bool), last_digest_sent_at, created_at |
+| `notes` | id, user_id, title, emoji, raw_transcript, polished_transcript, summary, action_items (jsonb), key_decisions (jsonb), tags (text[]), duration, is_favorite, viewed, share_token (unique), created_at, updated_at |
 | `collection_summaries` | tag, user_id (PK: user_id, tag), summary, generated_at — cached AI summaries for smart collections |
 | `subscriptions` | id, user_id, payfast_token, status, cancel_at_period_end, current_period_start/end, timestamps |
 | `payments` | id, user_id, subscription_id, amount_cents, payfast_payment_id (unique), status, created_at |
@@ -270,11 +287,13 @@ Get it from: Neon dashboard → your project → **Connect** button → copy the
 | `PAYFAST_MERCHANT_KEY` | PayFast merchant key |
 | `PAYFAST_PASSPHRASE` | ITN signature verification |
 | `PAYFAST_SANDBOX` | `true` in dev, `false` in production |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` in dev |
+| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` in dev, `https://cosmosainotetaker.netlify.app` in prod |
+| `RESEND_API_KEY` | Resend API key for weekly digest emails |
+| `CRON_SECRET` | Bearer token to authenticate digest cron job |
 
 ---
 
-## Implementation Status — V1 COMPLETE ✅ / V2 IN PROGRESS
+## Implementation Status — V1 ✅ / V2 ✅ / V3 ✅ — DEPLOYED
 
 ### V1 — Complete
 All 25 tasks implemented, 25 tests passing, production build verified.
@@ -327,7 +346,7 @@ All 25 tasks implemented, 25 tests passing, production build verified.
 
 15. **Privacy Policy & Terms of Use** — `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`: Full legal pages covering POPIA compliance, AI disclaimer, no audio storage, PayFast billing, data rights. Linked from Settings → About.
 
-### V2 — Upgrade (In Progress)
+### V2 — Upgrade ✅
 
 **Vision**: Transform Cosmos from a voice recorder into an intelligent personal knowledge base. *"Summary takes notes. Cosmos thinks for you."*
 
@@ -335,7 +354,7 @@ All 25 tasks implemented, 25 tests passing, production build verified.
 - **Ask Your Notes** — cross-note AI chat that searches entire history (Summary only does per-note chat)
 - **AI Auto-Tags + Smart Collections** — automatic organization via Claude-generated tags, no manual folders
 
-**V2 features implemented:**
+**V2 features:**
 - ✅ AI Insights per note (summary, action items, key decisions, emoji, tags)
 - ✅ Ask Your Notes — per-note AI chat with SSE streaming
 - ✅ Ask Your Notes — global cross-note AI chat with full-text search + citations
@@ -346,20 +365,34 @@ All 25 tasks implemented, 25 tests passing, production build verified.
 - ✅ Favorites system (toggle, filter)
 - ✅ Share/Copy/Print/Export buttons
 - ✅ Full-width "New Note" CTA
-- ✅ Language rename: "recording" → "note"
 - ✅ Re-polish/regenerate insights for existing notes
 - ✅ Note rename (inline edit)
 - ✅ Settings page with theme toggle, transcript settings
 - ✅ Privacy Policy & Terms of Use pages
 - ✅ Cloud (light) theme + Deep Space (dark) theme
 
-**V2 Spec**: `docs/superpowers/specs/2026-03-17-cosmos-v2-upgrade-design.md`
+### V3 — PWA, Shareable Links, Weekly AI Digest ✅
+
+**V3 features:**
+- ✅ **PWA** — `manifest.json`, service worker, "Add to Home Screen" for mobile app experience
+- ✅ **Shareable public links** — generate/revoke read-only links for any note (`/share/[token]`), OG meta tags, "Powered by Cosmos" CTA for viral growth
+- ✅ **Weekly AI Digest email** — Claude summarizes the week's notes into themes + top action items, sent via Resend, toggle in Settings
+- ✅ **DB keepalive** — `/api/warmup` route + client-side `DbWarmer` component prevents Neon cold starts
+- ✅ **3D pulsating orb** — CSS keyframe animations with radial gradient, glow, and scale pulse on login/landing pages
+- ✅ **Account & Sign Out moved to Settings** — cleaner Navbar, settings page is the hub for account management
+
+### Deployment
+
+- **Production URL:** https://cosmosainotetaker.netlify.app
+- **Hosting:** Netlify (auto-deploy from `master` branch on GitHub)
+- **Repo:** github.com/zamolucas-afk/cosmos
+- **Install fix:** `.npmrc` with `legacy-peer-deps=true` (next-auth peer dep conflict with Next.js 16)
 
 ### Next steps
-1. Set up PayFast sandbox credentials
-2. Test PayFast sandbox end-to-end (ngrok for ITN delivery)
-3. Deploy to Netlify
-4. Consider Neon paid plan ($19/mo) for "Always On" compute (eliminates cold starts)
+1. Set up Resend API key + CRON_SECRET for weekly digest
+2. Configure external cron (cron-job.org) to POST `/api/digest` every Monday 8am
+3. Set up PayFast sandbox credentials + test end-to-end (ngrok for ITN)
+4. Consider Neon paid plan ($19/mo) for "Always On" compute (eliminates cold starts entirely)
 
 ---
 

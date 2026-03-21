@@ -50,11 +50,17 @@ function FallbackTextInput() {
   )
 }
 
+function hasSpeechRecognition() {
+  if (typeof window === 'undefined') return false
+  return !!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition
+}
+
 export default function RecordingScreen() {
   const router = useRouter()
   const { state, transcript, duration, error, analyser, start, stop, reset } = useRecorder()
   const [saveError, setSaveError] = useState<string | null>(null)
   const [showBackConfirm, setShowBackConfirm] = useState(false)
+  const [showFallback, setShowFallback] = useState(false)
 
   const handleOrbClick = useCallback(async () => {
     if (state === 'idle') {
@@ -107,27 +113,52 @@ export default function RecordingScreen() {
 
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-lg px-4">
-        <RecordingOrb state={state} onClick={handleOrbClick} />
-        <Waveform analyser={analyser} active={state === 'recording'} />
+        {!showFallback ? (
+          <>
+            <RecordingOrb state={state} onClick={handleOrbClick} />
+            <Waveform analyser={analyser} active={state === 'recording'} />
 
-        {/* Live transcript */}
-        {(state === 'recording' || transcript) && (
-          <div className="w-full max-h-[35vh] overflow-y-auto rounded-lg bg-surface/60 backdrop-blur-sm
-            border border-accent-dim/20 p-4 text-sm text-text-secondary leading-relaxed">
-            {transcript || <span className="text-text-muted italic">Start speaking…</span>}
-          </div>
-        )}
+            {/* Live transcript */}
+            {(state === 'recording' || transcript) && (
+              <div className="w-full max-h-[35vh] overflow-y-auto rounded-lg bg-surface/60 backdrop-blur-sm
+                border border-accent-dim/20 p-4 text-sm text-text-secondary leading-relaxed">
+                {transcript || <span className="text-text-muted italic">Start speaking…</span>}
+              </div>
+            )}
 
-        {/* Errors */}
-        {(error || saveError) && (
-          <p className="text-error text-sm text-center bg-error/10 rounded px-4 py-2 max-w-sm">
-            {error || saveError}
-          </p>
-        )}
+            {/* Errors */}
+            {(error || saveError) && (
+              <p className="text-error text-sm text-center bg-error/10 rounded px-4 py-2 max-w-sm">
+                {error || saveError}
+              </p>
+            )}
 
-        {/* Unsupported browser fallback */}
-        {error?.includes('Chrome') && (
-          <FallbackTextInput />
+            {/* Show fallback option when speech recognition is unavailable or errored */}
+            {(error || !hasSpeechRecognition()) && state === 'idle' && (
+              <div className="flex flex-col items-center gap-2">
+                {!hasSpeechRecognition() && (
+                  <p className="text-text-secondary text-sm text-center">
+                    Voice recording is not supported on this browser.
+                    {/iPhone|iPad/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '')
+                      ? ' Try Chrome on Android or desktop.'
+                      : ' Try Chrome or Edge.'}
+                  </p>
+                )}
+                <button onClick={() => setShowFallback(true)}
+                  className="text-accent-light text-sm underline underline-offset-2 hover:text-accent-violet transition-colors cursor-pointer">
+                  Type a note instead
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <button onClick={() => setShowFallback(false)}
+              className="text-text-muted text-sm hover:text-text-primary transition-colors cursor-pointer mb-2">
+              ← Back to voice recording
+            </button>
+            <FallbackTextInput />
+          </>
         )}
       </div>
 
