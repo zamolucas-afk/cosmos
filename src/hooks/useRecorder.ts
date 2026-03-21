@@ -37,30 +37,10 @@ export function useRecorder() {
       return
     }
 
-    let stream: MediaStream
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch {
-      setError('Microphone access is required. Please allow it in your browser settings.')
-      return
-    }
-
-    streamRef.current = stream
-    startTimeRef.current = Date.now()
-
-    // Set up audio analyser
-    const audioCtx = new AudioContext()
-    audioCtxRef.current = audioCtx
-    const source = audioCtx.createMediaStreamSource(stream)
-    const analyserNode = audioCtx.createAnalyser()
-    analyserNode.fftSize = 256
-    source.connect(analyserNode)
-    setAnalyser(analyserNode)
-
-    // Set up speech recognition
-    // Android Chrome doesn't reliably support continuous mode — use non-continuous
-    // with auto-restart via onend for better mobile compatibility
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+    // Set up speech recognition FIRST — on Android, getUserMedia can grab
+    // exclusive mic access and block SpeechRecognition from getting audio
     recognition.continuous = !isMobile
     recognition.interimResults = true
     recognition.lang = 'en-ZA'
@@ -82,7 +62,6 @@ export function useRecorder() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (e: any) => {
       console.warn('[useRecorder] recognition error:', e.error)
-      // Network/aborted errors are transient — auto-restart recognition
       if (e.error === 'network' || e.error === 'aborted') {
         try { recognition.stop() } catch { /* already stopped */ }
         setTimeout(() => {
@@ -103,8 +82,6 @@ export function useRecorder() {
       if (e.error !== 'no-speech') setError(`Recognition error: ${e.error}`)
     }
 
-    // Auto-restart when recognition ends — critical for mobile (non-continuous mode)
-    // and desktop (browser kills recognition after ~60s silence)
     recognition.onend = () => {
       if (stateRef.current === 'recording') {
         try { recognition.start() } catch { /* ignore */ }
@@ -119,8 +96,30 @@ export function useRecorder() {
       setError('Could not start speech recognition. Try reloading the page.')
       return
     }
+
+    startTimeRef.current = Date.now()
     stateRef.current = 'recording'
     setState('recording')
+
+    // Set up audio analyser for waveform visualization
+    // On mobile: skip getUserMedia to avoid mic conflict with SpeechRecognition
+    // SpeechRecognition manages its own mic access on Android
+    if (!isMobile) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        streamRef.current = stream
+        const audioCtx = new AudioContext()
+        audioCtxRef.current = audioCtx
+        const source = audioCtx.createMediaStreamSource(stream)
+        const analyserNode = audioCtx.createAnalyser()
+        analyserNode.fftSize = 256
+        source.connect(analyserNode)
+        setAnalyser(analyserNode)
+      } catch {
+        // Waveform is non-essential — continue without it
+        console.warn('[useRecorder] AudioContext setup failed, continuing without waveform')
+      }
+    }
 
     intervalRef.current = setInterval(() => {
       setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000))
