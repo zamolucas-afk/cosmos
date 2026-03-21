@@ -58,7 +58,10 @@ export function useRecorder() {
     setAnalyser(analyserNode)
 
     // Set up speech recognition
-    recognition.continuous = true
+    // Android Chrome doesn't reliably support continuous mode — use non-continuous
+    // with auto-restart via onend for better mobile compatibility
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    recognition.continuous = !isMobile
     recognition.interimResults = true
     recognition.lang = 'en-ZA'
 
@@ -78,27 +81,44 @@ export function useRecorder() {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (e: any) => {
+      console.warn('[useRecorder] recognition error:', e.error)
       // Network/aborted errors are transient — auto-restart recognition
       if (e.error === 'network' || e.error === 'aborted') {
         try { recognition.stop() } catch { /* already stopped */ }
         setTimeout(() => {
-          try { recognition.start() } catch { /* ignore if destroyed */ }
+          if (stateRef.current === 'recording') {
+            try { recognition.start() } catch { /* ignore if destroyed */ }
+          }
         }, 300)
+        return
+      }
+      if (e.error === 'not-allowed') {
+        setError('Microphone permission denied. Please allow microphone access in your browser settings.')
+        return
+      }
+      if (e.error === 'service-not-available') {
+        setError('Speech recognition service unavailable. Check your internet connection.')
         return
       }
       if (e.error !== 'no-speech') setError(`Recognition error: ${e.error}`)
     }
 
-    // Auto-restart when recognition ends unexpectedly (browser kills it after ~60s silence)
+    // Auto-restart when recognition ends — critical for mobile (non-continuous mode)
+    // and desktop (browser kills recognition after ~60s silence)
     recognition.onend = () => {
-      // Only restart if we're still in recording state
       if (stateRef.current === 'recording') {
         try { recognition.start() } catch { /* ignore */ }
       }
     }
 
     recognitionRef.current = recognition
-    recognition.start()
+    try {
+      recognition.start()
+    } catch (e) {
+      console.error('[useRecorder] recognition.start() failed:', e)
+      setError('Could not start speech recognition. Try reloading the page.')
+      return
+    }
     stateRef.current = 'recording'
     setState('recording')
 
