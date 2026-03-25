@@ -1,11 +1,13 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useState, useActionState } from 'react'
 import Link from 'next/link'
+import { Eye, EyeOff } from 'lucide-react'
 import { registerAction } from '@/lib/actions/auth'
 
 export default function RegisterPage() {
   const [state, action, pending] = useActionState(registerAction, undefined)
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -40,15 +42,38 @@ export default function RegisterPage() {
               <label className="text-text-secondary text-xs uppercase tracking-wider">
                 {field === 'name' ? 'Full name' : field.charAt(0).toUpperCase() + field.slice(1)}
               </label>
-              <input
-                name={field}
-                type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'}
-                required
-                autoComplete={field === 'name' ? 'name' : field === 'email' ? 'email' : 'new-password'}
-                className="bg-background border border-accent-dim/40 rounded px-3 py-2.5 text-text-primary text-sm
-                  focus:outline-none focus:border-accent-violet transition-colors placeholder:text-text-muted"
-                placeholder={field === 'name' ? 'Your name' : field === 'email' ? 'you@example.com' : '8+ characters'}
-              />
+              {field === 'password' ? (
+                <div className="relative">
+                  <input
+                    name={field}
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    autoComplete="new-password"
+                    className="w-full bg-background border border-accent-dim/40 rounded px-3 py-2.5 pr-10 text-text-primary text-sm
+                      focus:outline-none focus:border-accent-violet transition-colors placeholder:text-text-muted"
+                    placeholder="8+ characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
+                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              ) : (
+                <input
+                  name={field}
+                  type={field === 'email' ? 'email' : 'text'}
+                  required
+                  autoComplete={field === 'name' ? 'name' : 'email'}
+                  className="bg-background border border-accent-dim/40 rounded px-3 py-2.5 text-text-primary text-sm
+                    focus:outline-none focus:border-accent-violet transition-colors placeholder:text-text-muted"
+                  placeholder={field === 'name' ? 'Your name' : 'you@example.com'}
+                />
+              )}
             </div>
           ))}
 

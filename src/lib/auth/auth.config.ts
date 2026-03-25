@@ -6,7 +6,7 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user
-      const isPublic = ['/login', '/register', '/pricing'].some(p =>
+      const isPublic = ['/login', '/register', '/pricing', '/forgot-password', '/reset-password'].some(p =>
         nextUrl.pathname.startsWith(p)
       ) || nextUrl.pathname.startsWith('/api/auth')
         || nextUrl.pathname.startsWith('/api/payfast')

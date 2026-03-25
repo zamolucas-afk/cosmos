@@ -11,7 +11,7 @@ function getResend(): Resend {
   return _resend
 }
 
-export async function sendDigestEmail(params: {
+export async function sendEmail(params: {
   to: string
   subject: string
   html: string
@@ -23,3 +23,6 @@ export async function sendDigestEmail(params: {
     html: params.html,
   })
 }
+
+/** @deprecated Use sendEmail instead */
+export const sendDigestEmail = sendEmail

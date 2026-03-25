@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useActionState } from 'react'
+import { useActionState } from 'react'
 import Link from 'next/link'
-import { Eye, EyeOff } from 'lucide-react'
-import { loginAction } from '@/lib/actions/auth'
+import { forgotPasswordAction } from '@/lib/actions/password'
 
-export default function LoginPage() {
-  const [state, action, pending] = useActionState(loginAction, undefined)
-  const [showPassword, setShowPassword] = useState(false)
+export default function ForgotPasswordPage() {
+  const [state, action, pending] = useActionState(forgotPasswordAction, undefined)
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -18,13 +16,13 @@ export default function LoginPage() {
             style={{
               background: 'radial-gradient(circle at 35% 35%, #c084fc, #7c3aed 50%, #4c1d95 80%, #2e1065)',
               boxShadow: '0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -4px 12px rgba(0,0,0,0.4), inset 0 4px 8px rgba(192,132,252,0.3)',
-              animation: 'login-orb-pulse 3s ease-in-out infinite',
+              animation: 'forgot-orb-pulse 3s ease-in-out infinite',
             }}
           />
-          <h1 className="text-2xl font-heading text-text-primary">Welcome back</h1>
-          <p className="text-text-secondary text-sm mt-1">Sign in to Cosmos</p>
+          <h1 className="text-2xl font-heading text-text-primary">Forgot password?</h1>
+          <p className="text-text-secondary text-sm mt-1">Enter your email and we&apos;ll send a reset link</p>
           <style>{`
-            @keyframes login-orb-pulse {
+            @keyframes forgot-orb-pulse {
               0%, 100% { transform: scale(1); box-shadow: 0 0 40px #7c3aed88, 0 0 80px #7c3aed44, inset 0 -4px 12px rgba(0,0,0,0.4), inset 0 4px 8px rgba(192,132,252,0.3); }
               50% { transform: scale(1.06); box-shadow: 0 0 50px #a855f7aa, 0 0 100px #7c3aed55, inset 0 -4px 12px rgba(0,0,0,0.4), inset 0 4px 8px rgba(192,132,252,0.4); }
             }
@@ -36,6 +34,9 @@ export default function LoginPage() {
           {state?.error && (
             <p className="text-error text-sm bg-error/10 rounded px-3 py-2">{state.error}</p>
           )}
+          {state?.success && (
+            <p className="text-success text-sm bg-success/10 rounded px-3 py-2">{state.success}</p>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label className="text-text-secondary text-xs uppercase tracking-wider">Email</label>
@@ -45,43 +46,18 @@ export default function LoginPage() {
               placeholder="you@example.com" />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-text-secondary text-xs uppercase tracking-wider">Password</label>
-            <div className="relative">
-              <input name="password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password"
-                className="w-full bg-background border border-accent-dim/40 rounded px-3 py-2.5 pr-10 text-text-primary text-sm
-                  focus:outline-none focus:border-accent-violet transition-colors placeholder:text-text-muted"
-                placeholder="••••••••" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors cursor-pointer"
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <Link href="/forgot-password" className="text-accent-light hover:text-text-primary transition-colors text-xs">
-              Forgot password?
-            </Link>
-          </div>
-
           <button type="submit" disabled={pending}
             className="mt-2 py-2.5 rounded bg-accent-violet text-white font-heading text-sm
               hover:bg-accent-light transition-colors disabled:opacity-50 cursor-pointer violet-glow"
             style={{ boxShadow: '0 0 20px #7c3aed44' }}>
-            {pending ? 'Signing in...' : 'Sign in'}
+            {pending ? 'Sending...' : 'Send reset link'}
           </button>
         </form>
 
         <p className="text-center text-text-secondary text-sm mt-4">
-          No account?{' '}
-          <Link href="/register" className="text-accent-light hover:text-text-primary transition-colors">
-            Create one
+          Remember your password?{' '}
+          <Link href="/login" className="text-accent-light hover:text-text-primary transition-colors">
+            Sign in
           </Link>
         </p>
       </div>
